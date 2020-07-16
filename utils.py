@@ -29,17 +29,16 @@ plt.rcParams['xtick.labelsize'] = small_txt
 plt.rcParams['ytick.labelsize'] = small_txt
 plt.rcParams['legend.fontsize'] = med_txt
 plt.rcParams['figure.titlesize'] = big_txt
-# opaque legend (<1 is not fully opaque)
-plt.rcParams["legend.framealpha"] = 1.0
-# set figure size
+# Transparent background color
+plt.rcParams['figure.facecolor'] = (0.0, 0.0, 0.0, 0.0)
+# # set figure size
 plt.rcParams['figure.figsize']=[6,2.5]
 # set default font
 # plt.rcParams['font.sans-serif'] = "Gill Sans"
 # plt.rcParams['font.family'] = "sans-serif"
 plt.rcParams['font.sans-serif'] = "Gill Sans"
-#https://coolors.co/35aad8-f3b61f-ba3b54-45b69c-8a96d7
-plt.rc('lines', linewidth=2)
-#use high-res
+# #https://coolors.co/35aad8-f3b61f-ba3b54-45b69c-8a96d7
+# plt.rc('lines', linewidth=2)
 
 
 

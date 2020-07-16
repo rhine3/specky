@@ -100,30 +100,20 @@ class Application:
     def set_styles(self):
 
         #Tkinter styling
-        style = ttk.Style()
-        style.theme_use('alt')
-        style.configure(self.radiostyle,
+        ttk_style = ttk.Style()
+
+        # Styling for label radiobuttons
+        ttk_style.configure(self.radiostyle,
+                theme='default',
                 indicatorrelief=tk.FLAT,
                 indicatormargin=-10,
                 indicatordiameter=-1,
-                background='white',
                 relief=tk.RAISED,
                 focusthickness=0, highlightthickness=0, padding=5)
-        style.map(self.radiostyle,
-                  background=[('selected', '#BABABA'), ('active', '#E8E8E8')])
-        """
-        style.configure(self.headerstyle,
-                #indicatorrelief=tk.FLAT,
-                #indicatormargin=-10,
-                #indicatordiameter=-1,
-                #background='white',
-                relief=tk.RAISED,
-                focusthickness=1, highlightthickness=4, padding=5)
-        style.map(self.headerstyle,
+        ttk_style.map(self.radiostyle,
                   background=[('selected', '#BABABA'), ('active', '#E8E8E8')])
 
 
-        """
 
     def create_header_buttons(self):
         """
@@ -175,7 +165,7 @@ class Application:
         """
         button_dict = {}
         if header_text:
-            tk.Label(
+            ttk.Label(
                 master = master_frame,
                 text=header_text+": ",
                 font="Helvetica 18 bold").pack(side = 'left')
@@ -197,6 +187,7 @@ class Application:
         # Create a tk.DrawingArea
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.master)
         self.canvas.draw()
+        self.canvas.get_tk_widget().configure(background=self.master.cget('bg')) # Set background color as same as window
         self.canvas.get_tk_widget().pack(side = tk.TOP, fill = tk.BOTH, expand = 1)
         #self.canvas._tkcanvas.pack(side = tk.TOP, fill = tk.BOTH, expand = 1)
 
@@ -288,19 +279,19 @@ class Application:
         '''
 
         # For testing purposes
-        # self.open_folder(
-        #    dirname = '/Volumes/seagate-storage/audio/og_files_from_10spp/cardinalis-cardinalis')
-        # self.set_labels_to_use(use_default_dict=True)
-        # self.set_assess_file(assess_file = 'default')
-        # valid = self.validate_assess_file()
-        # if not valid:
-        #    print("Valid assessment file not chosen. Please try again.")
-        #    self.finish_assessment()
-        # else:
-        #    # Make buttons if they aren't already made yet
-        #    if not self.assessment_button_frame.winfo_children():
-        #        self.make_assessment_buttons()
-        # return
+        self.open_folder(
+           dirname = '/Volumes/seagate-storage/audio/og_files_from_10spp/cardinalis-cardinalis')
+        self.set_labels_to_use(use_default_dict=True)
+        self.set_assess_file(assess_file = 'default')
+        valid = self.validate_assess_file()
+        if not valid:
+           print("Valid assessment file not chosen. Please try again.")
+           self.finish_assessment()
+        else:
+           # Make buttons if they aren't already made yet
+           if not self.assessment_button_frame.winfo_children():
+               self.make_assessment_buttons()
+        return
 
         tk.messagebox.showinfo(title = "Info", message="Select a folder from which to assess  .WAVs and .MP3s")
         # Get folder to assess
@@ -612,7 +603,9 @@ class Application:
             self.assessment_variables[variable] = tk.StringVar()
 
             # Create radio button for each option
-            variable_frame = tk.Frame(master=self.assessment_button_frame)
+            variable_frame = tk.Frame(
+                master = self.assessment_button_frame,
+            )
             tk.Label(
                 master=variable_frame,
                 text=variable+": ",
