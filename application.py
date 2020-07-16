@@ -177,7 +177,7 @@ class Application:
         """
         button_dict = {}
         if header_text:
-            ttk.Label(
+            tk.Label(
                 master = master_frame,
                 text=header_text+": ",
                 font="Helvetica 18 bold").pack(side = 'left')
@@ -317,7 +317,7 @@ class Application:
         self.set_assess_file()
         valid = self.validate_assess_file()
         if not valid:
-            tk.messagebox.showinfo(title="Info", message="Valid assessment file not chosen. Please try again.")
+            tk.messagebox.showinfo(title="Info", message="Labels in the pre-existing annotation file do not match the chosen labels. Please try again.")
             self.finish_assessment()
         else:
             # Make buttons if they aren't already made yet
@@ -447,7 +447,7 @@ class Application:
     def set_labels_to_use(self, use_default_dict = False):
 
         # Use default dict if desired
-        default_dict = OrderedDict({'present':['1', '0', 'unsure'], 'type':['song', 'call', 'unsure', 'na']})
+        default_dict = OrderedDict({'species_present':['present', 'absent', 'unsure'], 'sound_type':['song', 'call', 'unsure', 'na']})
         self.labels_file = None
         self.labels_dict = default_dict
         if not use_default_dict:
@@ -527,7 +527,7 @@ class Application:
         header_row = ['filename']
         header_row.extend(list(self.labels_dict.keys()))
 
-        while True: # The only way to exit from the loop is to
+        while True: # The only way to exit from the loop is to return
             # Create new file if it doesn't exist yet
             if not self.assess_file.exists():
                 with open(self.assess_file, 'w') as f:
@@ -537,28 +537,36 @@ class Application:
 
             continue_from_file = tk.messagebox.askyesnocancel("Warning",'There is already a file at the chosen location. Attempt to continue assessment from this file?\n\n Selecting "no" will overwrite assessment.\n\nSelecting "cancel" will allow you to pick a new file')
 
+            # When user clicks "Cancel": Select a different assessment file
             if continue_from_file is None:
                 self.set_assess_file()
+
+            # When user clicks "No": Overwrite assessment
             elif continue_from_file is False:
                 print("Overwriting pre-existing assessment")
                 with open(self.assess_file, 'w') as f:
                     writer = csv.writer(f, delimiter=',')
                     writer.writerow(header_row)
                 return True
+
+            # When user clicks "Yes": Attempt to continue previous assessment
             else:
-                # If no header row, write it
+                # Get the label files to compare labels
                 with open(self.assess_file, 'r') as f:
                     first_line = f.readline()
                 chosen_labels = ','.join(header_row)
                 this_file_labels = first_line.strip()
 
+                # Can't continue previous assessment: select a new file
                 if chosen_labels != this_file_labels:
-                    warnings.warn(f"Warning: Cannot continue pre-existing assessment.\nChosen labels are incompatible with this assessment file.\n  Chosen labels: {header_row}. \n  This file's column headers: {this_file_labels}")
+                    tk.messagebox.showerror(title = "Error", message = f"Chosen labels are incompatible with this assessment file.\n\nChosen labels: {header_row}. \n\nThis file's column headers: {this_file_labels}. Please try again.")
                     self.assess_file = None
-                    return False
+                    self.set_assess_file()
+
+                # Can continue previous assessment: un-queue old assessed files
                 else:
                     print("Continuing pre-existing assessment")
-                    # Un-queue any files that have previously been assessed in self.assesss_file
+                    # Un-queue any files that have previously been assessed in self.assess_file
                     with open(self.assess_file, 'r') as f:
                         reader = csv.reader(f)
                         for line in reader:
@@ -607,6 +615,10 @@ class Application:
 
             # Create radio button for each option
             variable_frame = tk.Frame(master=self.assessment_button_frame)
+            ttk.Label(
+                master = variable_frame,
+                text=header_text+": ",
+                font="Helvetica 18 bold").pack(side = 'left')
             for option in options:
 
                 ttk.Radiobutton(
