@@ -447,7 +447,7 @@ class Application:
     def set_labels_to_use(self, use_default_dict = False):
 
         # Use default dict if desired
-        default_dict = OrderedDict({'present':['1', '0', 'unsure'], 'type':['song', 'call', 'unsure']})
+        default_dict = OrderedDict({'present':['1', '0', 'unsure'], 'type':['song', 'call', 'unsure', 'na']})
         self.labels_file = None
         self.labels_dict = default_dict
         if not use_default_dict:
