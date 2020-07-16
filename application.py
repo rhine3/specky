@@ -277,21 +277,21 @@ class Application:
         '''
         Create GUI to sort through a folder of recordings
         '''
-
-        # For testing purposes
-        self.open_folder(
-           dirname = '/Volumes/seagate-storage/audio/og_files_from_10spp/cardinalis-cardinalis')
-        self.set_labels_to_use(use_default_dict=True)
-        self.set_assess_file(assess_file = 'default')
-        valid = self.validate_assess_file()
-        if not valid:
-           print("Valid assessment file not chosen. Please try again.")
-           self.finish_assessment()
-        else:
-           # Make buttons if they aren't already made yet
-           if not self.assessment_button_frame.winfo_children():
-               self.make_assessment_buttons()
-        return
+        #
+        # # For testing purposes
+        # self.open_folder(
+        #    dirname = '/Volumes/seagate-storage/audio/og_files_from_10spp/cardinalis-cardinalis')
+        # self.set_labels_to_use(use_default_dict=True)
+        # self.set_assess_file(assess_file = 'default')
+        # valid = self.validate_assess_file()
+        # if not valid:
+        #    print("Valid assessment file not chosen. Please try again.")
+        #    self.finish_assessment()
+        # else:
+        #    # Make buttons if they aren't already made yet
+        #    if not self.assessment_button_frame.winfo_children():
+        #        self.make_assessment_buttons()
+        # return
 
         tk.messagebox.showinfo(title = "Info", message="Select a folder from which to assess  .WAVs and .MP3s")
         # Get folder to assess
