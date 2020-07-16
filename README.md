@@ -3,16 +3,23 @@
 A spectrogram viewing application that allows you to quickly label short `WAV` or `MP3` clips using a combination of their sound and their spectrogram.
 
 ## Installing & running `specky`
-* Install necessary dependencies in a virtual environment, including:
-  ```tkinter
-  matplotlib
-  simpleaudio
-  numpy
-  librosa
-  scipy
-  sklearn
-  ```
-* Run: ```$ python application.py```
+Install necessary dependencies in a virtual environment, e.g.:
+ ```
+conda create --name specky_env
+conda activate specky_env
+conda install matplotlib numpy scipy scikit-learn scikit-image numba==0.048 pip
+which pip #make sure you're using the environment pip
+pip install librosa simpleaudio noisereduce more_itertools
+conda deactivate
+ ```
+
+Run inside your environment: 
+```
+conda activate specky_env
+python application.py
+# Use specky
+conda deactivate specky_env
+```
 
 ## Using `specky` to label spectrogram clips
 Specky allows you to label one or multiple attributes of `.WAV` or `.MP3` files. Files should be in one directory. It is easier to use specky to analyze short clips (on the scale of several seconds long) than long clips, which will not display as nicely in the interface.
