@@ -101,8 +101,6 @@ class Application:
 
         #Tkinter styling
         style = ttk.Style()
-        print('0')
-        print()
         style.theme_use('alt')
         style.configure(self.radiostyle,
                 indicatorrelief=tk.FLAT,
@@ -290,19 +288,19 @@ class Application:
         '''
 
         # For testing purposes
-        #self.open_folder(
+        # self.open_folder(
         #    dirname = '/Volumes/seagate-storage/audio/og_files_from_10spp/cardinalis-cardinalis')
-        #self.set_labels_to_use(use_default_dict=True)
-        #self.set_assess_file(assess_file = 'default')
-        #valid = self.validate_assess_file()
-        #if not valid:
+        # self.set_labels_to_use(use_default_dict=True)
+        # self.set_assess_file(assess_file = 'default')
+        # valid = self.validate_assess_file()
+        # if not valid:
         #    print("Valid assessment file not chosen. Please try again.")
         #    self.finish_assessment()
-        #else:
+        # else:
         #    # Make buttons if they aren't already made yet
         #    if not self.assessment_button_frame.winfo_children():
         #        self.make_assessment_buttons()
-        #return
+        # return
 
         tk.messagebox.showinfo(title = "Info", message="Select a folder from which to assess  .WAVs and .MP3s")
         # Get folder to assess
@@ -615,10 +613,12 @@ class Application:
 
             # Create radio button for each option
             variable_frame = tk.Frame(master=self.assessment_button_frame)
-            ttk.Label(
-                master = variable_frame,
-                text=header_text+": ",
-                font="Helvetica 18 bold").pack(side = 'left')
+            tk.Label(
+                master=variable_frame,
+                text=variable+": ",
+                font="Helvetica 18 bold",
+                ).pack(
+                    side='top', fill=tk.X, anchor=tk.NW)
             for option in options:
 
                 ttk.Radiobutton(
@@ -631,9 +631,10 @@ class Application:
                     command = self.create_assessment_function(
                             column_name = variable,
                             column_val = option)
-                    ).pack(side="top")
+                    ).pack(
+                        side='top', fill=tk.X, anchor=tk.NW)
 
-            variable_frame.pack(side="left")
+            variable_frame.pack(side="left", fill=tk.X, anchor=tk.NW)
 
         # Create a little navigation button
         self.assessment_navigation_frame = tk.Frame()
