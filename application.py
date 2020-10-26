@@ -320,15 +320,18 @@ class Application:
             tk.messagebox.showinfo(title="Info", message="Labels in the pre-existing annotation file do not match the chosen labels. Please try again.")
             self.finish_assessment()
         else:
+            # Draw first spectrogram
+            self.position = 0
+            self.load_samples()
+            self.draw_spec()
+
             # Make buttons if they aren't already made yet
             if not self.assessment_button_frame.winfo_children():
                 self.make_assessment_buttons()
+
             self.play()
 
-        # Draw first spectrogram if the above is successful
-        self.position = 0
-        self.load_samples()
-        self.draw_spec()
+
 
 
     #################### READING AUDIO FILES AND DRAWING SPECTROGRAMS ####################
