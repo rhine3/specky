@@ -13,11 +13,17 @@ pip install librosa simpleaudio noisereduce more_itertools
 conda deactivate
  ```
 
-Run inside your environment: 
+Install ffmpeg on your computer if you wish to annotate .mp3 files:
+* Instructions for Windows users: https://www.wikihow.com/Install-FFmpeg-on-Windows
+* Instructions for Mac users: [install with HomeBrew (`brew install ffmpeg`)](http://jollejolles.com/install-ffmpeg-on-mac-os-x/)
+* For Linux users: use your system's package manager to install ffmpeg, e.g. `sudo apt-get install ffmpeg`
+
+Now you should be able to run Specky inside your environment:
 ```
 conda activate specky_env
 python application.py
 # Use specky
+# Print statements will appear here in the Terminal as you are using Specky
 conda deactivate specky_env
 ```
 
