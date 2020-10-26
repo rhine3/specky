@@ -240,8 +240,18 @@ class Application:
             self.draw_spec()
 
 
-    def open_folder(self, dirname=None):
+    def open_folder(self, dirname=None, draw_first_spec=True):
         '''Open dialog to load & view folder & draw initial spectrogram
+
+        Allows user to select dirname if one is not passes to the function
+        Recursively identifies all files with the following endings in this dir:
+        .mp3, .wav, .WAV. Draws the initial spectrogram of the first file in
+        self.files.
+
+        Args:
+            dirname: folder to open. If None, user chooses folder using file dialog
+            draw_first_spec: bool
+                whether or not to draw first spect immediately
 
         Returns:
             1 if successful
@@ -263,9 +273,10 @@ class Application:
 
         # Draw initial spectrogram if files were returned
         if self.files:
-            self.position = 0
-            self.load_samples()
-            self.draw_spec()
+            if draw_first_spec:
+                self.position = 0
+                self.load_samples()
+                self.draw_spec()
             return 1
         # No files returned
         else:
@@ -295,7 +306,7 @@ class Application:
 
         tk.messagebox.showinfo(title = "Info", message="Select a folder from which to assess  .WAVs and .MP3s")
         # Get folder to assess
-        folder_chosen_successfully = self.open_folder()
+        folder_chosen_successfully = self.open_folder(draw_first_spec=False)
         if not folder_chosen_successfully:
             return
 
@@ -314,6 +325,10 @@ class Application:
                 self.make_assessment_buttons()
             self.play()
 
+        # Draw first spectrogram if the above is successful
+        self.position = 0
+        self.load_samples()
+        self.draw_spec()
 
 
     #################### READING AUDIO FILES AND DRAWING SPECTROGRAMS ####################
@@ -555,13 +570,15 @@ class Application:
                 # Can continue previous assessment: un-queue old assessed files
                 else:
                     print("Continuing pre-existing assessment")
+                    print("Currently queued files:")
+                    print(self.files)
                     # Un-queue any files that have previously been assessed in self.assess_file
                     with open(self.assess_file, 'r') as f:
                         reader = csv.reader(f)
                         for line in reader:
+                            filename = Path(line[0])
                             try:
-                                self.files.remove(line[0])
-                                #print('skipping', line[0])
+                                self.files.remove(filename)
                             except: pass
                     return True
 
