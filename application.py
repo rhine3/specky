@@ -537,7 +537,7 @@ class Application:
         while True: # The only way to exit from the loop is to return
             # Create new file if it doesn't exist yet
             if not self.assess_file.exists():
-                with open(self.assess_file, 'w') as f:
+                with open(self.assess_file, 'w', newline='') as f:
                     writer = csv.writer(f, delimiter=',')
                     writer.writerow(header_row)
                 return True
@@ -551,7 +551,7 @@ class Application:
             # When user clicks "No": Overwrite assessment
             elif continue_from_file is False:
                 print("Overwriting pre-existing assessment")
-                with open(self.assess_file, 'w') as f:
+                with open(self.assess_file, 'w', newline='') as f:
                     writer = csv.writer(f, delimiter=',')
                     writer.writerow(header_row)
                 return True
@@ -683,7 +683,7 @@ class Application:
         '''
 
         row_to_write = [self.files[self.position], *self.assessment.values()]
-        with open(self.assess_file, 'a') as f:
+        with open(self.assess_file, 'a', newline='') as f:
             writer = csv.writer(f, delimiter=',')
             writer.writerow(row_to_write)
 
