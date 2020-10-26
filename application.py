@@ -222,7 +222,11 @@ class Application:
     #################### KICK OFF THREE IMPORTANT FUNCTIONALITIES ####################
 
     def open_file(self):
-        '''Open dialog to load & view file'''
+        '''Open dialog to load & view file
+
+        Opens a file dialog to allow user to open a single file.
+        Returns nothing if no filename is selected.
+        '''
         filename = Path(fd.askopenfilename(filetypes=(
             ("WAV files","*.wav"),
             ("MP3 files", "*.mp3"),
@@ -530,6 +534,16 @@ class Application:
     def validate_assess_file(self):
         """
         Make sure the header row is correct
+
+        Follows this logic:
+        - If the chosen assessment file doesn't exist, makes a new file.
+        - Otherwise, allows user to decide what to do with existing file:
+            - Select a different filename
+            - Restart (overwrites previous file)
+            - Continue from file (pick up where left off)
+        - If continuing from file, do the following:
+            - Compare the chosen labels with the chosen file
+            -
         """
         header_row = ['filename']
         header_row.extend(list(self.labels_dict.keys()))
@@ -588,9 +602,6 @@ class Application:
     def clear_assessment_buttons(self):
         self.assessment_navigation_frame.destroy()
         self.assessment_button_frame.destroy()
-        print('ok')
-        for _ in range(14122115):
-            a = 1
 
     def make_assessment_buttons(self):
         """ Create rows of buttons, one for each assessment attribute
