@@ -314,9 +314,11 @@ class Application:
         if not folder_chosen_successfully:
             return
 
+        # Get the labels to use as buttons in the assessment
         tk.messagebox.showinfo(title = "Info", message='Select a labels file, or press "cancel" to use default labels')
         self.set_labels_to_use()
 
+        # Get a .csv filename
         tk.messagebox.showinfo(title = "Info", message='Select a filename to save assessments under, or press "cancel" to save "assessments.csv" within the folder to be assessed')
         self.set_assess_file()
         valid = self.validate_assess_file()
@@ -421,7 +423,6 @@ class Application:
         if self.assess_file:
 
             # If assessment is incomplete, don't allow to move to next file
-
             for assessment_value in self.assessment.values():
                 if not assessment_value:
                     tk.messagebox.showinfo(title="Error", message="Please complete assessment before moving to next file")
