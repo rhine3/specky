@@ -85,13 +85,12 @@ class Application:
         self.assessment = OrderedDict()
 
         # Create self.canvas for plotting
-        self.create_canvas()
+        self.fig, self.ax, self.canvas = self.create_canvas()
         self.canvas.mpl_connect('key_press_event',
             lambda event: self.on_key_event(event, self.canvas))
 
         # Add navigation toolbar to plot
         #NavigationToolbar2Tk(self.fig.canvas, self.master)
-        self.set_up_assessment()
 
 
 
@@ -183,15 +182,17 @@ class Application:
 
 
     def create_canvas(self):
-        self.fig = Figure(dpi=100)
-        self.ax = self.fig.add_subplot(111)
+        fig = Figure(dpi=100)
+        ax = fig.add_subplot(111)
 
         # Create a tk.DrawingArea
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.master)
-        self.canvas.draw()
-        self.canvas.get_tk_widget().configure(background=self.master.cget('bg')) # Set background color as same as window
-        self.canvas.get_tk_widget().pack(side = tk.TOP, fill = tk.BOTH, expand = 1)
+        canvas = FigureCanvasTkAgg(fig, master=self.master)
+        canvas.draw()
+        canvas.get_tk_widget().configure(background=self.master.cget('bg')) # Set background color as same as window
+        canvas.get_tk_widget().pack(side = tk.TOP, fill = tk.BOTH, expand = 1)
         #self.canvas._tkcanvas.pack(side = tk.TOP, fill = tk.BOTH, expand = 1)
+
+        return fig, ax, canvas
 
 
     def set_settings(self):
@@ -323,22 +324,28 @@ class Application:
             entry_box.insert(0, dir)
 
         def _get_labels(entry_box):
+            # Open labels file for reading
             file = fd.askopenfile(mode='r', filetypes=(
                 ("CSV files","*.csv"),
                 ("all files","*.*"))
             )
+            # Insert contents of labels file into box
             if file is not None:
                 results = file.read()
                 entry_box.delete('1.0', tk.END)
                 entry_box.insert('1.0', results)
 
         def _get_csv(entry_box):
-            name = fd.asksaveasfile()
+            # Get filename to save at
+            file = fd.askopenfilename(filetypes=(
+                ("CSV files","*.csv"),
+                ("all files","*.*"))
+            )
             entry_box.delete(0, tk.END)
-            entry_box.insert(0, name)
+            entry_box.insert(0, file)
 
         def _make_option(label_text, entry_text, entry_type, button_command, master=assess_popup, entry_width=width):
-            label = ttk.Label(master=master, text=label_text)
+            label = ttk.Label(master=master, text=label_text, background='white')
             label.pack(anchor='w')
             frame = tk.Frame(master=master)
             if entry_type == 'short':
@@ -359,21 +366,21 @@ class Application:
         intro_label.pack()
 
         folder_entry = _make_option(
-            label_text="Select a folder from which to assess wav and mp3 files",
-            entry_text='/Users/tessa/Music/israel-XC',#None,
+            label_text="\nSelect a folder from which to assess wav and mp3 files",
+            entry_text=None,
             entry_type='short',
             button_command=_get_directory
         )
 
         labels_entry = _make_option(
-            label_text="Select a labels file to use, type labels, or use default labels",
+            label_text="\nSelect a labels file to use, type labels, or use default labels",
             entry_text="""species_present,present,absent,unsure\nsound_type,song,call,unsure,na""",
             entry_type='long',
             button_command=_get_labels
         )
 
         savefile_entry = _make_option(
-            label_text='Select a location to save assessments at, or use default (assessments.csv inside of selected folder)',
+            label_text='\nSelect a location to save assessments at, or use default\n(assessments.csv inside of selected folder)',
             entry_text="./assessments.csv",
             entry_type='short',
             button_command=_get_csv
