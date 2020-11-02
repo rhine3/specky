@@ -15,6 +15,7 @@ matplotlib.use('TkAgg')
 import tkinter as tk
 import tkinter.filedialog as fd
 import tkinter.ttk as ttk
+import tkinter.scrolledtext as scrolledtext
 
 # Plotting MPL figures with tkinter
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -48,13 +49,11 @@ class Application:
         self.samples = None
         self.spec = None
 
-        # TODO: Add a button that lets you toggle whether sounds should automatically play
-        self.auto_play = True
-
         self.labels_dict = OrderedDict() #for assessments
         self.play_obj = None #for controlling playback
 
-        # Helpful spectrogram settings to have
+        # Settings for app functionality
+        self.auto_play = True
         self.sample_rate = 22050.0
         self.samples_per_seg = 512
         self.overlap_percent = 0.75
@@ -79,12 +78,12 @@ class Application:
         self.info_incomplete = False
 
         # Other parameter needed for assessment
-        self.assess_file = None
+        self.assess_csv = None
         self.zoom = False
         self.assessment = OrderedDict()
 
         # Create self.canvas for plotting
-        self.create_canvas()
+        self.fig, self.ax, self.canvas = self.create_canvas()
         self.canvas.mpl_connect('key_press_event',
             lambda event: self.on_key_event(event, self.canvas))
 
@@ -128,8 +127,8 @@ class Application:
             ("Quit", self.clean_up),
             ("Open File", self.open_file),
             ("Open Folder", self.open_folder),
-            ("Settings", self.set_settings),
-            ("Assess Folder", self.assess_folder),
+            #("Settings", self.set_settings),
+            ("Assess Folder", self.set_up_assessment),
         ]
         self._add_buttons(
             button_commands = io_commands,
@@ -139,7 +138,7 @@ class Application:
         playback_commands = [
             ("Play audio", self.play),
             ("Stop audio", self.stop),
-            ("Toggle zoom", self.toggle_zoom)
+            #("Toggle zoom", self.toggle_zoom)
         ]
         self._add_buttons(
             button_commands = playback_commands,
@@ -181,19 +180,20 @@ class Application:
 
 
     def create_canvas(self):
-        self.fig = Figure(dpi=100)
-        self.ax = self.fig.add_subplot(111)
+        fig = Figure(dpi=100)
+        ax = fig.add_subplot(111)
 
         # Create a tk.DrawingArea
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.master)
-        self.canvas.draw()
-        self.canvas.get_tk_widget().configure(background=self.master.cget('bg')) # Set background color as same as window
-        self.canvas.get_tk_widget().pack(side = tk.TOP, fill = tk.BOTH, expand = 1)
+        canvas = FigureCanvasTkAgg(fig, master=self.master)
+        canvas.draw()
+        canvas.get_tk_widget().configure(background=self.master.cget('bg')) # Set background color as same as window
+        canvas.get_tk_widget().pack(side = tk.TOP, fill = tk.BOTH, expand = 1)
         #self.canvas._tkcanvas.pack(side = tk.TOP, fill = tk.BOTH, expand = 1)
+
+        return fig, ax, canvas
 
 
     def set_settings(self):
-        # TODO: enable setting sample rate, etc.
         return
 
 
@@ -211,7 +211,7 @@ class Application:
 
     def clean_up(self):
         # Finish assessment if it hasn't finished yet
-        if self.assess_file:
+        if self.assess_csv:
             self.finish_assessment()
         self.master.quit()
 
@@ -244,7 +244,7 @@ class Application:
             self.draw_spec()
 
 
-    def open_folder(self, dirname=None, draw_first_spec=True):
+    def open_folder(self, dirname=None, dry=False, draw_first_spec=True):
         '''Open dialog to load & view folder & draw initial spectrogram
 
         Allows user to select dirname if one is not passes to the function
@@ -263,71 +263,174 @@ class Application:
         '''
 
         # If no dirname is passed to function, ask user to select
-        if not dirname: self.dirname = Path(fd.askdirectory())
-        else: self.dirname = Path(dirname)
-
-        # If no dirname is selected, return
-        if not self.dirname: return
+        if not dirname:
+            tk.messagebox.showinfo(
+                title = "Info",
+                message="Select a folder from which to assess  .WAVs and .MP3s"
+            )
+            dirname = Path(fd.askdirectory())
+            if not dirname: # If user doesn't select dirname
+                return 0
+        else:
+            dirname = Path(dirname)
+            if not dirname.exists():
+                print("Selected directory does not exist. Try again.")
+                return 0
 
         # Fill self.files with list of wav files
-        self.files = []
-        self.files.extend(self.dirname.glob("**/*.mp3"))
-        self.files.extend(self.dirname.glob("**/*.wav"))
-        self.files.extend(self.dirname.glob("**/*.WAV"))
+        files = []
+        files.extend(dirname.glob("**/*.mp3"))
+        files.extend(dirname.glob("**/*.wav"))
+        files.extend(dirname.glob("**/*.WAV"))
+        if not dry:
+            self.files = files
 
         # Draw initial spectrogram if files were returned
-        if self.files:
-            if draw_first_spec:
-                self.position = 0
-                self.load_samples()
-                self.draw_spec()
-            return 1
-        # No files returned
-        else:
+        if not files:
             print("No mp3 or wav files found in desired directory")
             return 0
+        elif not dry:
+            self.dirname = dirname
+            self.position = 0
+            if draw_first_spec:
+                self.load_samples()
+                self.draw_spec()
+
+        return dirname
+
+    def set_up_assessment(self):
+        """Create a popup where user can create settings for assessment
+
+        Creates a popup where the user can input text or choose a file for
+        a folder to assess, labels to use in the assessment, and a csv to
+        save the assessment results to.
+
+        """
+
+        width=50
+
+        assess_popup = tk.Tk()
+        assess_popup.wm_title('Assess folder')
+
+        def _return_to_default():
+            pass
+
+        def _get_directory(entry_box):
+            dir = fd.askdirectory()
+            entry_box.delete(0, tk.END)
+            entry_box.insert(0, dir)
+
+        def _get_labels(entry_box):
+            # Open labels file for reading
+            file = fd.askopenfile(mode='r', filetypes=(
+                ("CSV files","*.csv"),
+                ("all files","*.*"))
+            )
+            # Insert contents of labels file into box
+            if file is not None:
+                results = file.read()
+                entry_box.delete('1.0', tk.END)
+                entry_box.insert('1.0', results)
+
+        def _get_csv(entry_box):
+            # Get filename to save at
+            file = fd.askopenfilename(filetypes=(
+                ("CSV files","*.csv"),
+                ("all files","*.*"))
+            )
+            entry_box.delete(0, tk.END)
+            entry_box.insert(0, file)
+
+        def _make_option(label_text, entry_text, entry_type, button_command, button_text, master=assess_popup, entry_width=width):
+            label = ttk.Label(master=master, text=label_text, background='white')
+            label.pack(anchor='w')
+            frame = tk.Frame(master=master)
+            if entry_type == 'short':
+                entry = tk.Entry(master=frame, width=entry_width) # For one-line entries
+                if entry_text: entry.insert(0, entry_text)
+            else:
+                entry = tk.Text(master=frame, height=4, width=int(entry_width*1.3), wrap="none")
+                if entry_text: entry.insert('1.0', entry_text)
+            button = tk.Button(master=frame, text=button_text, command=lambda : button_command(entry))
+            entry.pack(side='left')
+            button.pack(side='left')
+            frame.pack(anchor='w')
+            return entry
 
 
-    def assess_folder(self):
-        '''
-        Create GUI to sort through a folder of recordings
-        '''
-        #
-        # # For testing purposes
-        # self.open_folder(
-        #    dirname = '/Volumes/seagate-storage/audio/og_files_from_10spp/cardinalis-cardinalis')
-        # self.set_labels_to_use(use_default_dict=True)
-        # self.set_assess_file(assess_file = 'default')
-        # valid = self.validate_assess_file()
-        # if not valid:
-        #    print("Valid assessment file not chosen. Please try again.")
-        #    self.finish_assessment()
-        # else:
-        #    # Make buttons if they aren't already made yet
-        #    if not self.assessment_button_frame.winfo_children():
-        #        self.make_assessment_buttons()
-        # return
+        intro = 'Create an assessment'
+        intro_label = ttk.Label(master=assess_popup, text=intro)
+        intro_label.pack()
 
-        tk.messagebox.showinfo(title = "Info", message="Select a folder from which to assess  .WAVs and .MP3s")
-        # Get folder to assess
-        folder_chosen_successfully = self.open_folder(draw_first_spec=False)
-        if not folder_chosen_successfully:
+        folder_entry = _make_option(
+            label_text="\nSelect a folder from which to assess wav and mp3 files",
+            entry_text=None,
+            entry_type='short',
+            button_command=_get_directory,
+            button_text='Choose folder...'
+        )
+
+        labels_entry = _make_option(
+            label_text="\nSelect a labels file to use, type labels, or use default labels",
+            entry_text="""species_present,present,absent,unsure\nsound_type,song,call,unsure,na""",
+            entry_type='long',
+            button_command=_get_labels,
+            button_text='Choose file...'
+        )
+
+        savefile_entry = _make_option(
+            label_text='\nSelect a location to save assessments at, or use default\n(assessments.csv inside of selected folder)',
+            entry_text="./assessments.csv",
+            entry_type='short',
+            button_command=_get_csv,
+            button_text='Choose file...'
+        )
+
+        finish_frame = tk.Frame(master=assess_popup)
+        cancel_button = tk.Button(master=finish_frame, text='Cancel', command=lambda : assess_popup.destroy())
+        submit_button = tk.Button(
+            master=finish_frame,
+            text='Start Assessment',
+            command=lambda : self.validate_assessment(assess_popup, folder_entry, labels_entry, savefile_entry)
+        )
+        cancel_button.pack(side='left')
+        submit_button.pack(side='left')
+        finish_frame.pack(anchor='e')
+
+    def validate_assessment(self, assess_popup, folder_entry, labels_entry, savefile_entry):
+        assess_folder = Path(folder_entry.get())
+        labels_text = labels_entry.get('0.0', tk.END)
+        assess_csv = Path(savefile_entry.get())
+        if not assess_csv.is_absolute():
+            assess_csv = assess_folder.joinpath(assess_csv)
+
+        valid_folder = self.validate_assessment_folder(assess_folder=assess_folder)
+        if not valid_folder:
+            tk.messagebox.showinfo(title = "Error", message="Please select a folder that contains .mp3 or .wav/.WAV files.")
+            return
+        valid_labels = self.validate_assessment_labels(labels_text=labels_text)
+        if not valid_labels:
+            tk.messagebox.showinfo(title = "Error", message="Labels were not in proper format. Please try again.")
+            return
+        valid_csv, response = self.validate_assessment_csv(assess_csv=assess_csv, labels_dict=valid_labels)
+        if not valid_csv:
+            tk.messagebox.showinfo(title = "Error", message=response)
             return
 
-        # Get the labels to use as buttons in the assessment
-        tk.messagebox.showinfo(title = "Info", message='Select a labels file, or press "cancel" to use default labels')
-        self.set_labels_to_use()
-
-        # Get a .csv filename
-        tk.messagebox.showinfo(title = "Info", message='Select a filename to save assessments under, or press "cancel" to save "assessments.csv" within the folder to be assessed')
-        self.set_assess_file()
-        valid = self.validate_assess_file()
-        if not valid:
-            tk.messagebox.showinfo(title="Info", message="Labels in the pre-existing annotation file do not match the chosen labels. Please try again.")
-            self.finish_assessment()
         else:
+            # Set self.folder and populate self.files
+            self.set_assessment_folder(assess_folder=valid_folder)
+
+            # Set self.labels and create first blank assessment
+            self.set_assessment_labels(labels_dict=valid_labels)
+
+            # Set self.assessment_csv and create or continue from file as needed
+            self.set_assessment_csv(assess_csv=valid_csv, behavior=response)
+
+            # Remove popup
+            assess_popup.destroy()
+
             # Draw first spectrogram
-            self.position = 0
             self.load_samples()
             self.draw_spec()
 
@@ -336,6 +439,11 @@ class Application:
                 self.make_assessment_buttons()
 
             self.play()
+
+
+
+
+
 
 
 
@@ -413,14 +521,13 @@ class Application:
 
 
     def load_next_file(self, increment=1, autoplay = True):
-        '''
-        Increments position and moves to next file in self.files
+        '''Increments position and moves to next file in self.files
 
         Can also be used to stay at current file by setting increment=0
         '''
 
         # Some special things to take care of during an assessment
-        if self.assess_file:
+        if self.assess_csv:
 
             # If assessment is incomplete, don't allow to move to next file
             for assessment_value in self.assessment.values():
@@ -454,161 +561,156 @@ class Application:
 
 
 
+
+
+
     #################### ASSESSMENT HELPER FUNCTIONS ####################
 
-    def set_labels_to_use(self, use_default_dict = False):
-
-        # Use default dict if desired
-        default_dict = OrderedDict({'species_present':['present', 'absent', 'unsure'], 'sound_type':['song', 'call', 'unsure', 'na']})
-        self.labels_file = None
-        self.labels_dict = default_dict
-        if not use_default_dict:
-            # Prompt to select a labels options file from csv
-            labels_file = fd.askopenfilename(filetypes=(
-                ("CSV files","*.csv"),
-                ("all files","*.*")))
-
-            # If file not selected, use the default dict
-            # Otherwise, open and parse the labels file
-            if not labels_file: pass
-            else:
-                self.labels_file = Path(labels_file)
-                with open(self.labels_file, 'r') as f:
-                    for line in f:
-                        splitline = line.split(",")
-                        self.labels_dict[splitline[0]] = splitline[1:]
-        # Create the assessment_dict
-        self.reset_assessment_dict()
-
-        print(f"  Using labels {self.labels_dict}")
-
-    #def raise_all_buttons(self):
-        #for button_row, buttons in self.assessment_button_dod.items():
-        #    for button_name, button in self.assessment_button_dod[button_row].items():
-        #        button.config(bg = 'blue')
-
     def reset_assessment_dict(self):
+        """Reset self.assessment_dic
+
+        Resets the dictionary for the current assessment.
+        Can also be called to create the dictionary for a new set of labels.
+        """
         for label in self.labels_dict.keys():
             self.assessment[label] = None
-            #state(["!focus", "!selected"]
-        #self.raise_all_buttons()
 
-    def set_assess_file(self, assess_file = None):
-        # Can specify assess file by calling this function
-        # Otherwise, ask user to "save as" an assessment file
-        if not self.dirname:
-            warnings.warn('Must select assessment folder before choosing assessment filename')
-            return
-        if not self.labels_dict:
-            warnings.warn('Must select labels dict before choosing assessment filename')
-            return
-        default_assess_file = self.dirname.joinpath("assessment.csv")
+    ### FOLDER SETUP ###
+    def validate_assessment_folder(self, assess_folder):
+        """Set self.dirname
+        """
+        if not assess_folder:
+            return 0
+        return self.open_folder(dirname=assess_folder, dry=True, draw_first_spec=False)
 
-        # Use default assess file
-        if assess_file == 'default':
-            self.assess_file = default_assess_file
+    def set_assessment_folder(self, assess_folder):
+        return self.open_folder(dirname=assess_folder, dry=False, draw_first_spec=False)
 
-        # Use a different assess file specified in the function call
-        elif assess_file:
-            self.assess_file = Path(assess_file)
 
-        # No assess file specified in script; open dialog box
+    ### LABELS SETUP ###
+    def validate_assessment_labels(self, labels_text):
+        try:
+            labels_dict = self.parse_labels(labels_text)
+        except:
+            return 0
         else:
-            assess_file = fd.asksaveasfilename(
-                title = "Select filename",
-                defaultextension = ".csv",
-                filetypes = (
-                    ("CSV File", "*.csv"),
-                    ("All Files", "*.*") )
-                )
-            # Use the selected file if a file was selected
-            # Otherwise, the default file value will be used
-            # There are less verbose ways to write this logic, but this is clear
-            if assess_file:
-                self.assess_file = Path(assess_file)
+            return labels_dict
+
+    def parse_labels(self, plaintext):
+        labels_dict = {}
+        plaintext = plaintext.strip()
+        lines = plaintext.split('\n')
+        for line in lines:
+            splitline = line.split(",")
+            labels_dict[splitline[0]] = splitline[1:]
+        return labels_dict
+
+    def set_assessment_labels(self, labels_dict):
+        # Set assessment labels
+        print(f"  Using labels {labels_dict}")
+        self.labels_dict = labels_dict
+
+        # Create a blank assessment_dict for the first file to assess
+        self.reset_assessment_dict()
+
+    ### CSV SETUP ###
+    def validate_assessment_csv(self, assess_csv, labels_dict):
+        # Create a new file if possible
+        if not assess_csv.exists():
+            if not assess_csv.parent.exists():
+                return 0, f'Path for assessment csv ({assess_csv}) does not exist'
             else:
-                self.assess_file = default_assess_file
-
-        print(f"  Using assessment file {self.assess_file}")
-
-
-    def validate_assess_file(self):
-        """
-        Make sure the header row is correct
-
-        Follows this logic:
-        - If the chosen assessment file doesn't exist, makes a new file.
-        - Otherwise, allows user to decide what to do with existing file:
-            - Select a different filename
-            - Restart (overwrites previous file)
-            - Continue from file (pick up where left off)
-        - If continuing from file, do the following:
-            - Compare the chosen labels with the chosen file
-            -
-        """
-        header_row = ['filename']
-        header_row.extend(list(self.labels_dict.keys()))
-
-        while True: # The only way to exit from the loop is to return
-            # Create new file if it doesn't exist yet
-            if not self.assess_file.exists():
-                with open(self.assess_file, 'w', newline='') as f:
-                    writer = csv.writer(f, delimiter=',')
-                    writer.writerow(header_row)
-                return True
-
-            continue_from_file = tk.messagebox.askyesnocancel("Warning",'There is already a file at the chosen location. Attempt to continue assessment from this file?\n\n Selecting "no" will overwrite assessment.\n\nSelecting "cancel" will allow you to pick a new file')
+                return assess_csv, 'new'
+        # Decide whether to continue or overwrite
+        else:
+            continue_from_file = tk.messagebox.askyesnocancel(
+                "Warning",
+                'There is already a file at the chosen location. Attempt to continue \
+                assessment from this file?\n\n Selecting "no" will overwrite assessment. \
+                \n\nSelecting "cancel" will allow you to pick a new file'
+            )
 
             # When user clicks "Cancel": Select a different assessment file
             if continue_from_file is None:
-                self.set_assess_file()
+                return 0, f'Please select a different filename for the assessment file'
 
             # When user clicks "No": Overwrite assessment
             elif continue_from_file is False:
-                print("Overwriting pre-existing assessment")
-                with open(self.assess_file, 'w', newline='') as f:
-                    writer = csv.writer(f, delimiter=',')
-                    writer.writerow(header_row)
-                return True
+                print(f"Overwriting pre-existing assessment ({assess_csv})")
+                return assess_csv, 'overwrite'
 
             # When user clicks "Yes": Attempt to continue previous assessment
             else:
-                # Get the label files to compare labels
-                with open(self.assess_file, 'r') as f:
+                header_row = self.make_assessment_csv_header(labels_dict)
+
+                # Get the desired label files to compare labels
+                with open(assess_csv, 'r') as f:
                     first_line = f.readline()
                 chosen_labels = ','.join(header_row)
-                this_file_labels = first_line.strip()
+                pre_existing_labels = first_line.strip()
 
                 # Can't continue previous assessment: select a new file
-                if chosen_labels != this_file_labels:
-                    tk.messagebox.showerror(title = "Error", message = f"Chosen labels are incompatible with this assessment file.\n\nChosen labels: {header_row}. \n\nThis file's column headers: {this_file_labels}. Please try again.")
-                    self.assess_file = None
-                    self.set_assess_file()
+                if chosen_labels != pre_existing_labels:
+                    return 0, f"Labels in the pre-existing annotation file ({assess_csv}) do not match the chosen labels.\n\nPre-existing labels: {pre_existing_labels}\nChosen labels: {chosen_labels}\n\nSelect a different annotation file or change the labels"
 
                 # Can continue previous assessment: un-queue old assessed files
                 else:
-                    print("Continuing pre-existing assessment")
-                    print("Currently queued files:")
-                    print(self.files)
-                    # Un-queue any files that have previously been assessed in self.assess_file
-                    with open(self.assess_file, 'r') as f:
-                        reader = csv.reader(f)
-                        for line in reader:
-                            filename = Path(line[0])
-                            try:
-                                self.files.remove(filename)
-                            except: pass
-                    return True
+                    return assess_csv, 'continue'
+
+    def make_assessment_csv_header(self, labels_dict):
+
+        header_row = ['filename']
+        header_row.extend(list(labels_dict.keys()))
+        return header_row
+
+    def set_assessment_csv(self, assess_csv, behavior):
+        """Set self.assessment_csv and prepare this file
+
+        Sets self.assessment_csv and either creates this file with header,
+        overwrites a previous version of the file with a blank version with
+        only the header, or sets up the analysis to continue from a previous
+        assessment. Assumes that the following variables are already set:
+        self.files (for continuing) and self.labels_dict
+
+        Args:
+            assess_csv (str or pathlib.Path):
+                name of the file where assessment results will be stored
+            behavior (str):
+                'continue': seek through previous version of file and
+                    remove any files that were assessed in the prev version
+                'new': create this file from scratch with correct header
+                'overwrite': overwrite a previous version of the file and create
+                    a fresh one with correct header
+        """
+        self.assess_csv = assess_csv
+        print(f"Saving results at {self.assess_csv}")
+
+        if behavior == 'continue':
+            print("Continuing pre-existing assessment")
+            # Un-queue any files that have previously been assessed in self.assess_csv
+            with open(self.assess_csv, 'r') as f:
+                reader = csv.reader(f)
+                for line in reader:
+                    filename = Path(line[0])
+                    try:
+                        self.files.remove(filename)
+                    except: pass
+        else: #behavior == 'new' or behavior == 'overwrite'
+            print(f"Creating {self.assess_csv} ({behavior})")
+            header_row = self.make_assessment_csv_header(self.labels_dict)
+            with open(self.assess_csv, 'w', newline='') as f:
+                writer = csv.writer(f, delimiter=',')
+                writer.writerow(header_row)
 
     def clear_assessment_buttons(self):
         self.assessment_navigation_frame.destroy()
         self.assessment_button_frame.destroy()
 
     def make_assessment_buttons(self):
-        """ Create rows of buttons, one for each assessment attribute
+        """Create rows of buttons, one for each assessment attribute
 
         Create one row of buttons for each of the assessment attributes
-        assigned in self.assess_folder(). These attributes are the
+        assigned in self.set_up_assessment(). These attributes are the
         columns of the assessment csvs. The buttons give the
         possible values of each attribute. Attributes and their possible
         values are stored in self.labels_dict
@@ -672,30 +774,42 @@ class Application:
         self.assessment_button_frame.pack(side='bottom')
 
 
-
     def create_assessment_function(self, column_name, column_val):
-        # Assign assessment to the ordered dict
-        # This function is a bit tricky in that it returns a lambda function
-        # This is necessary because we need to return a function that each
-        # button can use to assign a different value to a certain column
+        """Create a function for assigning an assessment value to a column
+
+        This is a helper function that generates functions.
+        It returns an instance of self.assign_assessment() that associates
+        the correct column name with the chosen column value.
+        These functions are generated to go along with buttons.
+
+        Args:
+            column_name (str): the name of the variable
+            column_val (str): the value of the variable to be chosen by the user
+        """
 
         #print(f"Creating button to set {column_name} as {column_val}")
         return lambda : self.assign_assessment(column_name = column_name, column_val = column_val)
 
 
     def assign_assessment(self, column_name, column_val):
+        """For an assessment, assign the assment value to a column value.
+
+        Args:
+            column_name (str): the name of the variable
+            column_val (str): the value of the variable chosen by the user
+        """
         print(f"Setting {column_name} as {column_val}")
         self.assessment[column_name] = column_val
 
     def write_assessment(self):
         '''
         Write the file at self.position with its designated status
-        to the assessment file at self.assess_file, then move
+        to the assessment file at self.assess_csv, then move
         to next file
         '''
 
         row_to_write = [self.files[self.position], *self.assessment.values()]
-        with open(self.assess_file, 'a', newline='') as f:
+        with open(self.assess_csv, 'a', newline='') as f:
             writer = csv.writer(f, delimiter=',')
             writer.writerow(row_to_write)
 
@@ -719,7 +833,16 @@ class Application:
         self.clear_fig()
 
         # Reset relevant variables
-        self.assess_file = None
+        self.assess_csv = None
+
+
+
+
+
+
+
+
+
 
 
 
