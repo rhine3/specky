@@ -49,13 +49,11 @@ class Application:
         self.samples = None
         self.spec = None
 
-        # TODO: Add a button that lets you toggle whether sounds should automatically play
-        self.auto_play = True
-
         self.labels_dict = OrderedDict() #for assessments
         self.play_obj = None #for controlling playback
 
-        # Helpful spectrogram settings to have
+        # Settings for app functionality
+        self.auto_play = True
         self.sample_rate = 22050.0
         self.samples_per_seg = 512
         self.overlap_percent = 0.75
@@ -129,7 +127,7 @@ class Application:
             ("Quit", self.clean_up),
             ("Open File", self.open_file),
             ("Open Folder", self.open_folder),
-            ("Settings", self.set_settings),
+            #("Settings", self.set_settings),
             ("Assess Folder", self.set_up_assessment),
         ]
         self._add_buttons(
@@ -140,7 +138,7 @@ class Application:
         playback_commands = [
             ("Play audio", self.play),
             ("Stop audio", self.stop),
-            ("Toggle zoom", self.toggle_zoom)
+            #("Toggle zoom", self.toggle_zoom)
         ]
         self._add_buttons(
             button_commands = playback_commands,
@@ -196,7 +194,6 @@ class Application:
 
 
     def set_settings(self):
-        # TODO: enable setting sample rate, etc.
         return
 
 
@@ -344,7 +341,7 @@ class Application:
             entry_box.delete(0, tk.END)
             entry_box.insert(0, file)
 
-        def _make_option(label_text, entry_text, entry_type, button_command, master=assess_popup, entry_width=width):
+        def _make_option(label_text, entry_text, entry_type, button_command, button_text, master=assess_popup, entry_width=width):
             label = ttk.Label(master=master, text=label_text, background='white')
             label.pack(anchor='w')
             frame = tk.Frame(master=master)
@@ -354,7 +351,7 @@ class Application:
             else:
                 entry = tk.Text(master=frame, height=4, width=int(entry_width*1.3), wrap="none")
                 if entry_text: entry.insert('1.0', entry_text)
-            button = tk.Button(master=frame, text='Choose file...', command=lambda : button_command(entry))
+            button = tk.Button(master=frame, text=button_text, command=lambda : button_command(entry))
             entry.pack(side='left')
             button.pack(side='left')
             frame.pack(anchor='w')
@@ -369,21 +366,24 @@ class Application:
             label_text="\nSelect a folder from which to assess wav and mp3 files",
             entry_text=None,
             entry_type='short',
-            button_command=_get_directory
+            button_command=_get_directory,
+            button_text='Choose folder...'
         )
 
         labels_entry = _make_option(
             label_text="\nSelect a labels file to use, type labels, or use default labels",
             entry_text="""species_present,present,absent,unsure\nsound_type,song,call,unsure,na""",
             entry_type='long',
-            button_command=_get_labels
+            button_command=_get_labels,
+            button_text='Choose file...'
         )
 
         savefile_entry = _make_option(
             label_text='\nSelect a location to save assessments at, or use default\n(assessments.csv inside of selected folder)',
             entry_text="./assessments.csv",
             entry_type='short',
-            button_command=_get_csv
+            button_command=_get_csv,
+            button_text='Choose file...'
         )
 
         finish_frame = tk.Frame(master=assess_popup)
