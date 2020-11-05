@@ -8,10 +8,6 @@ if sys_pf == 'darwin':
 
 import matplotlib.pyplot as plt
 from librosa import load, to_mono
-#from librosa.output import write_wav
-import noisereduce as nr
-from skimage.morphology import remove_small_objects
-from more_itertools import consecutive_groups
 import os
 from scipy.signal import butter, lfilter
 from librosa.core import power_to_db
@@ -50,7 +46,7 @@ def plotter(
     title = None
 ):
     ax.set_title(title)
-    ax.pcolormesh(times, frequencies, power_to_db(spectrogram), cmap=plt.get_cmap("gray_r"))
+    ax.pcolormesh(times, frequencies, power_to_db(spectrogram), cmap=plt.get_cmap("gray_r"), shading='auto')
     ax.set_xlabel("time (sec)")
     ax.set_ylabel("frequency (Hz)")
 
