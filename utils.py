@@ -50,7 +50,7 @@ def plotter(
     title = None
 ):
     ax.set_title(title)
-    ax.pcolormesh(times, frequencies, power_to_db(spectrogram), cmap=plt.get_cmap("gray_r"))
+    ax.pcolormesh(times, frequencies, power_to_db(spectrogram), cmap=plt.get_cmap("gray_r"), shading='auto')
     ax.set_xlabel("time (sec)")
     ax.set_ylabel("frequency (Hz)")
 
