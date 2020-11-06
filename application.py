@@ -67,6 +67,9 @@ class Application:
         self.playback_frame = tk.Frame()
         self.create_header_buttons()
 
+        # Placeholder for assessment dialog
+        self.assess_popup = None
+
         # Create assessment frame below (empty)
         self.assessment_button_frame = tk.Frame()
         self.assessment_button_frame.pack()
@@ -298,6 +301,13 @@ class Application:
 
         return dirname
 
+    def remove_assess_popup(self):
+        """Close assessment popup and reset self.assess_popup attribute
+        """
+        if self.assess_popup is not None:
+            self.assess_popup.destroy()
+        self.assess_popup = None
+
     def set_up_assessment(self):
         """Create a popup where user can create settings for assessment
 
@@ -309,8 +319,12 @@ class Application:
 
         width=50
 
-        assess_popup = tk.Tk()
-        assess_popup.wm_title('Assess folder')
+        if self.assess_popup is not None:
+            self.assess_popup.lift()
+            return
+
+        self.assess_popup = tk.Tk()
+        self.assess_popup.wm_title('Assess folder')
 
         def _return_to_default():
             pass
@@ -344,7 +358,7 @@ class Application:
                 entry_box.delete(0, tk.END)
                 entry_box.insert(0, file)
 
-        def _make_option(label_text, entry_text, entry_type, button_command, button_text, master=assess_popup, entry_width=width):
+        def _make_option(label_text, entry_text, entry_type, button_command, button_text, master=self.assess_popup, entry_width=width):
             label = ttk.Label(master=master, text=label_text, background='white')
             label.pack(anchor='w')
             frame = tk.Frame(master=master)
@@ -362,7 +376,7 @@ class Application:
 
 
         intro = 'Create an assessment'
-        intro_label = ttk.Label(master=assess_popup, text=intro)
+        intro_label = ttk.Label(master=self.assess_popup, text=intro)
         intro_label.pack()
 
         folder_entry = _make_option(
@@ -389,21 +403,21 @@ class Application:
             button_text='Choose file...'
         )
 
-        finish_frame = tk.Frame(master=assess_popup)
-        cancel_button = tk.Button(master=finish_frame, text='Cancel', command=lambda : assess_popup.destroy())
+        finish_frame = tk.Frame(master=self.assess_popup)
+        cancel_button = tk.Button(master=finish_frame, text='Cancel', command=lambda : self.remove_assess_popup())
         submit_button = tk.Button(
             master=finish_frame,
             text='Start Assessment',
-            command=lambda : self.validate_assessment(assess_popup, folder_entry, labels_entry, savefile_entry)
+            command=lambda : self.validate_assessment(folder_entry, labels_entry, savefile_entry)
         )
         cancel_button.pack(side='left')
         submit_button.pack(side='left')
         finish_frame.pack(anchor='e')
 
-    def validate_assessment(self, assess_popup, folder_entry, labels_entry, savefile_entry):
+    def validate_assessment(self, folder_entry, labels_entry, savefile_entry):
         """Validate and start assessment
 
-        Called by the popup created by self.set_up_assessment
+        Called by buttons in self.assess_popup, created by self.set_up_assessment
         """
         assess_folder = Path(folder_entry.get())
         labels_text = labels_entry.get('0.0', tk.END)
@@ -443,7 +457,7 @@ class Application:
         self.set_assessment_csv(assess_csv=valid_csv, behavior=response)
 
         # Remove popup
-        assess_popup.destroy()
+        self.remove_assess_popup()
 
         # Draw first spectrogram
         self.load_samples()
