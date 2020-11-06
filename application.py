@@ -411,41 +411,50 @@ class Application:
         if not assess_csv.is_absolute():
             assess_csv = assess_folder.joinpath(assess_csv)
 
+        # Check the given folder of audio files is valid
         valid_folder = self.validate_assessment_folder(assess_folder=assess_folder)
         if not valid_folder:
             tk.messagebox.showinfo(title = "Error", message="Please select a folder that contains .mp3 or .wav/.WAV files.")
             return
+
+        # Check the given labels are valid
         valid_labels = self.validate_assessment_labels(labels_text=labels_text)
         if not valid_labels:
             tk.messagebox.showinfo(title = "Error", message="Labels were not in proper format. Please try again.")
             return
+
+        # Check the CSV save location is valid
         valid_csv, response = self.validate_assessment_csv(assess_csv=assess_csv, labels_dict=valid_labels)
         if not valid_csv:
             tk.messagebox.showinfo(title = "Error", message=response)
             return
 
-        else:
-            # Set self.folder and populate self.files
-            self.set_assessment_folder(assess_folder=valid_folder)
+        # Start assessment!
+        # Finish any prior assessments that were already active
+        self.finish_assessment()
 
-            # Set self.labels and create first blank assessment
-            self.set_assessment_labels(labels_dict=valid_labels)
+        # Set self.folder and populate self.files
+        self.set_assessment_folder(assess_folder=valid_folder)
 
-            # Set self.assessment_csv and create or continue from file as needed
-            self.set_assessment_csv(assess_csv=valid_csv, behavior=response)
+        # Set self.labels and create first blank assessment
+        self.set_assessment_labels(labels_dict=valid_labels)
 
-            # Remove popup
-            assess_popup.destroy()
+        # Set self.assessment_csv and create or continue from file as needed
+        self.set_assessment_csv(assess_csv=valid_csv, behavior=response)
 
-            # Draw first spectrogram
-            self.load_samples()
-            self.draw_spec()
+        # Remove popup
+        assess_popup.destroy()
 
-            # Make buttons if they aren't already made yet
-            if not self.assessment_button_frame.winfo_children():
-                self.make_assessment_buttons()
+        # Draw first spectrogram
+        self.load_samples()
+        self.draw_spec()
 
-            self.play()
+        # Make buttons
+        #if not self.assessment_button_frame.winfo_children():
+        self.make_assessment_buttons()
+
+        # Play the first file
+        self.play()
 
 
 
@@ -839,14 +848,14 @@ class Application:
         print("Ending assessment")
 
         # Destroy accept/reject/hold buttons
-        for child in self.assessment_button_frame.winfo_children():
-            child.destroy()
+        self.clear_assessment_buttons()
 
         # Clear spectrogram
         self.clear_fig()
 
         # Reset relevant variables
         self.assess_csv = None
+        self.assessment = OrderedDict()
 
 
 
