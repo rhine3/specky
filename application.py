@@ -317,8 +317,10 @@ class Application:
 
         def _get_directory(entry_box):
             dir = fd.askdirectory()
-            entry_box.delete(0, tk.END)
-            entry_box.insert(0, dir)
+
+            if dir: #Only replace box entry if something was selected
+                entry_box.delete(0, tk.END)
+                entry_box.insert(0, dir)
 
         def _get_labels(entry_box):
             # Open labels file for reading
@@ -327,7 +329,7 @@ class Application:
                 ("all files","*.*"))
             )
             # Insert contents of labels file into box
-            if file is not None:
+            if file is not None: #Only replace box text if something was selected
                 results = file.read()
                 entry_box.delete('1.0', tk.END)
                 entry_box.insert('1.0', results)
@@ -338,8 +340,9 @@ class Application:
                 ("CSV files","*.csv"),
                 ("all files","*.*"))
             )
-            entry_box.delete(0, tk.END)
-            entry_box.insert(0, file)
+            if file: #Only replace box text if something was selected
+                entry_box.delete(0, tk.END)
+                entry_box.insert(0, file)
 
         def _make_option(label_text, entry_text, entry_type, button_command, button_text, master=assess_popup, entry_width=width):
             label = ttk.Label(master=master, text=label_text, background='white')
@@ -380,7 +383,7 @@ class Application:
 
         savefile_entry = _make_option(
             label_text='\nSelect a location to save assessments at, or use default\n(assessments.csv inside of selected folder)',
-            entry_text="./assessments.csv",
+            entry_text="assessments.csv",
             entry_type='short',
             button_command=_get_csv,
             button_text='Choose file...'
@@ -398,6 +401,10 @@ class Application:
         finish_frame.pack(anchor='e')
 
     def validate_assessment(self, assess_popup, folder_entry, labels_entry, savefile_entry):
+        """Validate and start assessment
+
+        Called by the popup created by self.set_up_assessment
+        """
         assess_folder = Path(folder_entry.get())
         labels_text = labels_entry.get('0.0', tk.END)
         assess_csv = Path(savefile_entry.get())
@@ -528,7 +535,6 @@ class Application:
 
         # Some special things to take care of during an assessment
         if self.assess_csv:
-
             # If assessment is incomplete, don't allow to move to next file
             for assessment_value in self.assessment.values():
                 if not assessment_value:
@@ -703,6 +709,13 @@ class Application:
                 writer.writerow(header_row)
 
     def clear_assessment_buttons(self):
+        """Remove assessment buttons
+
+        Delete any assessment buttons (labels and "save & continue" buttons)
+        that are currently packed on the app
+        - Used every time a file is done being assessed
+        - Also used whenever a new assessment is started
+        """
         self.assessment_navigation_frame.destroy()
         self.assessment_button_frame.destroy()
 
