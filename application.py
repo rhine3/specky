@@ -67,12 +67,13 @@ class Application:
         self.playback_frame = tk.Frame()
         self.create_header_buttons()
 
+        # Placeholder for assessment dialog
+        self.assess_popup = None
+
         # Create assessment frame below (empty)
         self.assessment_button_frame = tk.Frame()
-        self.assessment_button_frame.pack()
         self.assessment_navigation_frame = tk.Frame()
-        self.assessment_navigation_frame.pack()
-        self.assessment_variables = []
+        self.assessment_variables = OrderedDict()
 
         # Keep track of what info is being displayed during assessments
         self.info_incomplete = False
@@ -112,8 +113,6 @@ class Application:
         ttk_style.map(self.radiostyle,
                   background=[('selected', '#BABABA'), ('active', '#E8E8E8')])
 
-
-
     def create_header_buttons(self):
         """
         Use self._add_buttons() to create two frames of buttons
@@ -125,7 +124,7 @@ class Application:
         ### File I/O frame
         io_commands = [
             ("Quit", self.clean_up),
-            ("Open File", self.open_file),
+            ("Open File", self.open_audio_file),
             ("Open Folder", self.open_folder),
             #("Settings", self.set_settings),
             ("Assess Folder", self.set_up_assessment),
@@ -192,10 +191,8 @@ class Application:
 
         return fig, ax, canvas
 
-
     def set_settings(self):
         return
-
 
     def on_key_event(self, event, canvas):
         '''Handles keypresses:
@@ -208,7 +205,6 @@ class Application:
         self.io_frame.bind("<q>", lambda event: self.clean_up())
         return
 
-
     def clean_up(self):
         # Finish assessment if it hasn't finished yet
         if self.assess_csv:
@@ -219,230 +215,23 @@ class Application:
 
 
 
-    #################### KICK OFF THREE IMPORTANT FUNCTIONALITIES ####################
-
-    def open_file(self):
-        '''Open dialog to load & view file
-
-        Opens a file dialog to allow user to open a single file.
-        Returns nothing if no filename is selected.
-        '''
-        filename = Path(fd.askopenfilename(filetypes=(
-            ("WAV files","*.wav"),
-            ("MP3 files", "*.mp3"),
-            ("all files","*.*"))))
-
-        # If no filename is selected, return
-        if not filename:
+    #################### AUDIO HELPER FUNCTIONS ###################
+    def play(self):
+        if type(self.samples) is not np.ndarray:
             return
-
-        self.files = [filename]
-        self.position = 0
-
-        if filename:
-            self.load_samples()
-            self.draw_spec()
-
-
-    def open_folder(self, dirname=None, dry=False, draw_first_spec=True):
-        '''Open dialog to load & view folder & draw initial spectrogram
-
-        Allows user to select dirname if one is not passes to the function
-        Recursively identifies all files with the following endings in this dir:
-        .mp3, .wav, .WAV. Draws the initial spectrogram of the first file in
-        self.files.
-
-        Args:
-            dirname: folder to open. If None, user chooses folder using file dialog
-            draw_first_spec: bool
-                whether or not to draw first spect immediately
-
-        Returns:
-            1 if successful
-            0 if no files
-        '''
-
-        # If no dirname is passed to function, ask user to select
-        if not dirname:
-            tk.messagebox.showinfo(
-                title = "Info",
-                message="Select a folder from which to assess  .WAVs and .MP3s"
-            )
-            dirname = Path(fd.askdirectory())
-            if not dirname: # If user doesn't select dirname
-                return 0
         else:
-            dirname = Path(dirname)
-            if not dirname.exists():
-                print("Selected directory does not exist. Try again.")
-                return 0
+            if self.play_obj:
+                self.stop()
+            self.play_obj = sa.play_buffer(
+                audio_data = self.samples,
+                num_channels = 1,
+                bytes_per_sample = 2,
+                sample_rate = int(self.sample_rate))
 
-        # Fill self.files with list of wav files
-        files = []
-        files.extend(dirname.glob("**/*.mp3"))
-        files.extend(dirname.glob("**/*.wav"))
-        files.extend(dirname.glob("**/*.WAV"))
-        if not dry:
-            self.files = files
-
-        # Draw initial spectrogram if files were returned
-        if not files:
-            print("No mp3 or wav files found in desired directory")
-            return 0
-        elif not dry:
-            self.dirname = dirname
-            self.position = 0
-            if draw_first_spec:
-                self.load_samples()
-                self.draw_spec()
-
-        return dirname
-
-    def set_up_assessment(self):
-        """Create a popup where user can create settings for assessment
-
-        Creates a popup where the user can input text or choose a file for
-        a folder to assess, labels to use in the assessment, and a csv to
-        save the assessment results to.
-
-        """
-
-        width=50
-
-        assess_popup = tk.Tk()
-        assess_popup.wm_title('Assess folder')
-
-        def _return_to_default():
-            pass
-
-        def _get_directory(entry_box):
-            dir = fd.askdirectory()
-            entry_box.delete(0, tk.END)
-            entry_box.insert(0, dir)
-
-        def _get_labels(entry_box):
-            # Open labels file for reading
-            file = fd.askopenfile(mode='r', filetypes=(
-                ("CSV files","*.csv"),
-                ("all files","*.*"))
-            )
-            # Insert contents of labels file into box
-            if file is not None:
-                results = file.read()
-                entry_box.delete('1.0', tk.END)
-                entry_box.insert('1.0', results)
-
-        def _get_csv(entry_box):
-            # Get filename to save at
-            file = fd.askopenfilename(filetypes=(
-                ("CSV files","*.csv"),
-                ("all files","*.*"))
-            )
-            entry_box.delete(0, tk.END)
-            entry_box.insert(0, file)
-
-        def _make_option(label_text, entry_text, entry_type, button_command, button_text, master=assess_popup, entry_width=width):
-            label = ttk.Label(master=master, text=label_text, background='white')
-            label.pack(anchor='w')
-            frame = tk.Frame(master=master)
-            if entry_type == 'short':
-                entry = tk.Entry(master=frame, width=entry_width) # For one-line entries
-                if entry_text: entry.insert(0, entry_text)
-            else:
-                entry = tk.Text(master=frame, height=4, width=int(entry_width*1.3), wrap="none")
-                if entry_text: entry.insert('1.0', entry_text)
-            button = tk.Button(master=frame, text=button_text, command=lambda : button_command(entry))
-            entry.pack(side='left')
-            button.pack(side='left')
-            frame.pack(anchor='w')
-            return entry
-
-
-        intro = 'Create an assessment'
-        intro_label = ttk.Label(master=assess_popup, text=intro)
-        intro_label.pack()
-
-        folder_entry = _make_option(
-            label_text="\nSelect a folder from which to assess wav and mp3 files",
-            entry_text=None,
-            entry_type='short',
-            button_command=_get_directory,
-            button_text='Choose folder...'
-        )
-
-        labels_entry = _make_option(
-            label_text="\nSelect a labels file to use, type labels, or use default labels",
-            entry_text="""species_present,present,absent,unsure\nsound_type,song,call,unsure,na""",
-            entry_type='long',
-            button_command=_get_labels,
-            button_text='Choose file...'
-        )
-
-        savefile_entry = _make_option(
-            label_text='\nSelect a location to save assessments at, or use default\n(assessments.csv inside of selected folder)',
-            entry_text="./assessments.csv",
-            entry_type='short',
-            button_command=_get_csv,
-            button_text='Choose file...'
-        )
-
-        finish_frame = tk.Frame(master=assess_popup)
-        cancel_button = tk.Button(master=finish_frame, text='Cancel', command=lambda : assess_popup.destroy())
-        submit_button = tk.Button(
-            master=finish_frame,
-            text='Start Assessment',
-            command=lambda : self.validate_assessment(assess_popup, folder_entry, labels_entry, savefile_entry)
-        )
-        cancel_button.pack(side='left')
-        submit_button.pack(side='left')
-        finish_frame.pack(anchor='e')
-
-    def validate_assessment(self, assess_popup, folder_entry, labels_entry, savefile_entry):
-        assess_folder = Path(folder_entry.get())
-        labels_text = labels_entry.get('0.0', tk.END)
-        assess_csv = Path(savefile_entry.get())
-        if not assess_csv.is_absolute():
-            assess_csv = assess_folder.joinpath(assess_csv)
-
-        valid_folder = self.validate_assessment_folder(assess_folder=assess_folder)
-        if not valid_folder:
-            tk.messagebox.showinfo(title = "Error", message="Please select a folder that contains .mp3 or .wav/.WAV files.")
-            return
-        valid_labels = self.validate_assessment_labels(labels_text=labels_text)
-        if not valid_labels:
-            tk.messagebox.showinfo(title = "Error", message="Labels were not in proper format. Please try again.")
-            return
-        valid_csv, response = self.validate_assessment_csv(assess_csv=assess_csv, labels_dict=valid_labels)
-        if not valid_csv:
-            tk.messagebox.showinfo(title = "Error", message=response)
-            return
-
-        else:
-            # Set self.folder and populate self.files
-            self.set_assessment_folder(assess_folder=valid_folder)
-
-            # Set self.labels and create first blank assessment
-            self.set_assessment_labels(labels_dict=valid_labels)
-
-            # Set self.assessment_csv and create or continue from file as needed
-            self.set_assessment_csv(assess_csv=valid_csv, behavior=response)
-
-            # Remove popup
-            assess_popup.destroy()
-
-            # Draw first spectrogram
-            self.load_samples()
-            self.draw_spec()
-
-            # Make buttons if they aren't already made yet
-            if not self.assessment_button_frame.winfo_children():
-                self.make_assessment_buttons()
-
-            self.play()
-
-
-
-
+    def stop(self):
+        if self.play_obj:
+            self.play_obj.stop()
+            sa.stop_all()
 
 
 
@@ -528,15 +317,13 @@ class Application:
 
         # Some special things to take care of during an assessment
         if self.assess_csv:
-
             # If assessment is incomplete, don't allow to move to next file
             for assessment_value in self.assessment.values():
                 if not assessment_value:
                     tk.messagebox.showinfo(title="Error", message="Please complete assessment before moving to next file")
                     return
             # Otherwise write out the assessment, reset the labels, and clear the info box
-            self.write_assessment()
-            self.reset_assessment_dict()
+            self.complete_one_assessment()
 
         # Remove loaded audio
         self.stop()
@@ -561,19 +348,293 @@ class Application:
 
 
 
+    #################### KICK OFF TWO IMPORTANT FUNCTIONALITIES ####################
+
+    def open_audio_file(self):
+        '''Open dialog to load & view file
+
+        Opens a file dialog to allow user to open a single file.
+        Returns nothing if no filename is selected.
+        '''
+        filename = Path(fd.askopenfilename(filetypes=(
+            ("WAV files","*.wav"),
+            ("MP3 files", "*.mp3"),
+            ("all files","*.*"))))
+
+        # If no filename is selected, return
+        if not filename:
+            return
+
+        self.files = [filename]
+        self.position = 0
+
+        if filename:
+            self.load_samples()
+            self.draw_spec()
+
+
+    def open_folder(self, dirname=None, dry=False, draw_first_spec=True):
+        '''Open dialog to load & view folder & draw initial spectrogram
+
+        Allows user to select dirname if one is not passes to the function
+        Recursively identifies all files with the following endings in this dir:
+        .mp3, .wav, .WAV. Draws the initial spectrogram of the first file in
+        self.files.
+
+        Args:
+            dirname: folder to open. If None, user chooses folder using file dialog
+            draw_first_spec: bool
+                whether or not to draw first spect immediately
+
+        Returns:
+            1 if successful
+            0 if no files
+        '''
+
+        # If no dirname is passed to function, ask user to select
+        if not dirname:
+            tk.messagebox.showinfo(
+                title = "Info",
+                message="Select a folder from which to assess  .WAVs and .MP3s"
+            )
+            dirname = Path(fd.askdirectory())
+            if not dirname: # If user doesn't select dirname
+                return 0
+        else:
+            dirname = Path(dirname)
+            if not dirname.exists():
+                print("Selected directory does not exist. Try again.")
+                return 0
+
+        # Fill self.files with list of wav files
+        files = []
+        files.extend(dirname.glob("**/*.mp3"))
+        files.extend(dirname.glob("**/*.wav"))
+        files.extend(dirname.glob("**/*.WAV"))
+        files = sorted(files)
+        if not dry:
+            self.files = files
+
+        # Draw initial spectrogram if files were returned
+        if not files:
+            print("No mp3 or wav files found in desired directory")
+            return 0
+        elif not dry:
+            self.dirname = dirname
+            self.position = 0
+            if draw_first_spec:
+                self.load_samples()
+                self.draw_spec()
+
+        return dirname
 
 
 
-    #################### ASSESSMENT HELPER FUNCTIONS ####################
 
-    def reset_assessment_dict(self):
-        """Reset self.assessment_dic
 
-        Resets the dictionary for the current assessment.
-        Can also be called to create the dictionary for a new set of labels.
+
+
+
+
+    #################### METHODS FOR INITIALLY SETTING UP AN ASSESSMENT ####################
+    def return_to_default(self):
+        pass
+
+    def try_replace_entry(self, text, entry_box, start_position):
+        if entry_box and text:
+            entry_box.delete(start_position, tk.END)
+            entry_box.insert(start_position, dir)
+
+    def get_directory(self, entry_box=None):
+        dir = fd.askdirectory()
+        # If there is an entry box, replace the text in it with the selection
+        self.try_replace_entry(text=dir, entry_box=entry_box, start_position=0)
+        return dir
+
+    def get_labels(self, entry_box=None):
+        # Open labels file for reading
+        file = fd.askopenfile(mode='r', filetypes=(
+            ("CSV files","*.csv"),
+            ("all files","*.*"))
+        )
+
+        # Get contents of labels file if selected
+        if file:
+            results = file.read()
+            self.try_replace_entry(text=file, entry_box=entry_box, start_position=1.0)
+
+        return file
+
+    def get_csv(self, entry_box=None):
+        # Get filename to save at
+        file = fd.askopenfilename(filetypes=(
+            ("CSV files","*.csv"),
+            ("all files","*.*"))
+        )
+
+        # If there is an entry box, replace the text in it with the selection
+        self.try_replace_entry(text=file, entry_box=entry_box, start_position=0)
+
+        return file
+
+    def make_assessment_option(
+        self,
+        label_text,
+        entry_text,
+        entry_type,
+        button_command,
+        button_text,
+        master=None,
+        entry_width=50,
+    ):
+        """Make text entry and button for the assessment popup
+
+        Create label to describe what this option does
+        Create entry field, either a single-line one or a larger one. This can
+        be typed into manually.
+        Create button with a particular command. The button command should also
+        be capable of filling in the entry field.
+        Thus, the entry field can be filled in either by typing or by interacting
+        with the button.
+
+        Return the entry field, which can then be inspected with entry.get()
+        to return the text in the field.
+
+        Args:
+            label_text (str): descriptive text for assessment option
+            entry_text (str): any text to pre-fill the entry field with
+            entry_type (str): whether the entry field should be a single line
+                (entry_type ='short') or a paragraph entry box
+            button_command (function): a function that takes as an argument
+                the entry widget. This function should bring up a dialog box
+                (e.g. for selecting a file) and should be able to modify the
+                entry widget's text based on the user's selection in the dialog
+            button_text (str): text to display on button
+            master (tk.Frame): master frame to draw the widgets in
+                (default: self.assess_popup)
+            entry_width (int): the desired width of the entry field
+                (default: 50)
+
+        Returns:
+            tk.Entry or tk.Text depending on entry_type
         """
-        for label in self.labels_dict.keys():
-            self.assessment[label] = None
+        if not master:
+            master = self.assess_popup
+
+        label = ttk.Label(master=master, text=label_text, background='white')
+        label.pack(anchor='w')
+        frame = tk.Frame(master=master)
+        if entry_type == 'short' or entry_type == 'entry':
+            # For one-line entries
+            entry = tk.Entry(master=frame, width=entry_width)
+            if entry_text: entry.insert(0, entry_text)
+        else:
+            # For paragraph-sized entries
+            entry = tk.Text(master=frame, height=4, width=int(entry_width*1.3), wrap="none")
+            if entry_text: entry.insert('1.0', entry_text)
+        button = tk.Button(master=frame, text=button_text, command=lambda : button_command(entry))
+        entry.pack(side='left')
+        button.pack(side='left')
+        frame.pack(anchor='w')
+        return entry
+
+    def set_up_assessment(self):
+        """Create a popup where user can create settings for assessment
+
+        Creates a popup where the user can input text or choose a file for
+        a folder to assess, labels to use in the assessment, and a csv to
+        save the assessment results to.
+        """
+        if self.assess_popup is not None:
+            self.assess_popup.lift()
+            return
+
+        self.assess_popup = tk.Tk()
+        self.assess_popup.wm_title('Assess folder')
+
+        intro = 'Create an assessment'
+        intro_label = ttk.Label(master=self.assess_popup, text=intro)
+        intro_label.pack()
+
+        folder_entry = self.make_assessment_option(
+            label_text="\nSelect a folder from which to assess wav and mp3 files",
+            entry_text=None,
+            entry_type='short',
+            button_command=self.get_directory,
+            button_text='Choose folder...'
+        )
+
+        labels_entry = self.make_assessment_option(
+            label_text="\nSelect a labels file to use, type labels, or use default labels",
+            entry_text="""species_present,present,absent,unsure\nsound_type,song,call,unsure,na""",
+            entry_type='long',
+            button_command=self.get_labels,
+            button_text='Choose file...'
+        )
+
+        savefile_entry = self.make_assessment_option(
+            label_text='\nSelect a location to save assessments at, or use default\n(assessments.csv inside of selected folder)',
+            entry_text="assessments.csv",
+            entry_type='short',
+            button_command=self.get_csv,
+            button_text='Choose file...'
+        )
+
+        finish_frame = tk.Frame(master=self.assess_popup)
+        cancel_button = tk.Button(master=finish_frame, text='Cancel', command=lambda : self.remove_assess_popup())
+        submit_button = tk.Button(
+            master=finish_frame,
+            text='Start Assessment',
+            command=lambda : self.validate_assessment(folder_entry, labels_entry, savefile_entry)
+        )
+        cancel_button.pack(side='left')
+        submit_button.pack(side='left')
+        finish_frame.pack(anchor='e')
+
+        self.validate_assessment(folder_entry, labels_entry, savefile_entry)
+
+    def remove_assess_popup(self):
+        """Close assessment popup and reset self.assess_popup attribute
+        """
+        if self.assess_popup is not None:
+            self.assess_popup.destroy()
+        self.assess_popup = None
+
+    def validate_assessment(self, folder_entry, labels_entry, savefile_entry):
+        """Validate and start assessment
+
+        Called by buttons in self.assess_popup, created by self.set_up_assessment
+        """
+        assess_folder = Path(folder_entry.get())
+        labels_text = labels_entry.get('0.0', tk.END)
+        assess_csv = Path(savefile_entry.get())
+        if not assess_csv.is_absolute():
+            assess_csv = assess_folder.joinpath(assess_csv)
+
+        # Check the given folder of audio files is valid
+        valid_folder = self.validate_assessment_folder(assess_folder=assess_folder)
+        if not valid_folder:
+            tk.messagebox.showinfo(title = "Error", message="Please select a folder that contains .mp3 or .wav/.WAV files.")
+            return
+
+        # Check the given labels are valid
+        valid_labels = self.validate_assessment_labels(labels_text=labels_text)
+        if not valid_labels:
+            tk.messagebox.showinfo(title = "Error", message="Labels were not in proper format. Please try again.")
+            return
+
+        # Check the CSV save location is valid
+        valid_csv, response = self.validate_assessment_csv(assess_csv=assess_csv, labels_dict=valid_labels)
+        if not valid_csv:
+            tk.messagebox.showinfo(title = "Error", message=response)
+            return
+
+        self.start_assessment(
+            assess_folder=valid_folder,
+            labels_dict=valid_labels,
+            assess_csv=valid_csv,
+            behavior=response,
+        )
 
     ### FOLDER SETUP ###
     def validate_assessment_folder(self, assess_folder):
@@ -607,7 +668,7 @@ class Application:
 
     def set_assessment_labels(self, labels_dict):
         # Set assessment labels
-        print(f"  Using labels {labels_dict}")
+        print(f"Using labels {labels_dict}")
         self.labels_dict = labels_dict
 
         # Create a blank assessment_dict for the first file to assess
@@ -658,7 +719,6 @@ class Application:
                     return assess_csv, 'continue'
 
     def make_assessment_csv_header(self, labels_dict):
-
         header_row = ['filename']
         header_row.extend(list(labels_dict.keys()))
         return header_row
@@ -702,10 +762,6 @@ class Application:
                 writer = csv.writer(f, delimiter=',')
                 writer.writerow(header_row)
 
-    def clear_assessment_buttons(self):
-        self.assessment_navigation_frame.destroy()
-        self.assessment_button_frame.destroy()
-
     def make_assessment_buttons(self):
         """Create rows of buttons, one for each assessment attribute
 
@@ -715,28 +771,32 @@ class Application:
         possible values of each attribute. Attributes and their possible
         values are stored in self.labels_dict
 
-        When these buttons are clicked, the assessment will be logged
-        using self.assign_assessment(), which stores the assessment result in
+        When these buttons are clicked, the assessment result is stored in
         self.assessment.
 
         A "next" button is produced as well.
-        All attributes must be assessed before continuing.
+
+        All attributes must be assessed before continuing (enforced by
+        self.load_next_file)
         """
 
-
-        self.assessment_button_frame = tk.Frame()
-        self.assessment_button_frame.pack()
+        # Create a little navigation button
         self.assessment_navigation_frame = tk.Frame()
-        self.assessment_navigation_frame.pack()
+        tk.Button(
+            master=self.assessment_navigation_frame,
+            text="Save assessment and view next file",
+            command=self.load_next_file,
+        ).pack(side='left')
 
+        # Create a dictionary and radio buttons for assessment variables
         self.assessment_variables = OrderedDict()
-        # Create a set of radio buttons for each assessment variable
+        self.assessment_button_frame = tk.Frame()
         for variable, options in self.labels_dict.items():
 
             # Keep track of each variable in an ordered dict
             self.assessment_variables[variable] = tk.StringVar()
 
-            # Create radio button for each option
+            # Create a frame with the variable name (column name) at the top
             variable_frame = tk.Frame(
                 master = self.assessment_button_frame,
             )
@@ -746,94 +806,143 @@ class Application:
                 font="Helvetica 18 bold",
                 ).pack(
                     side='top', fill=tk.X, anchor=tk.NW)
-            for option in options:
 
+            # Create radio button for each option for this variable
+            for option in options:
                 ttk.Radiobutton(
-                    master = variable_frame,
-                    text = option,
-                    variable = self.assessment_variables[variable],
-                    value = option,
-                    #idth=-15,
+                    master=variable_frame,
+                    text=option,
+                    variable=self.assessment_variables[variable],
+                    value=option,
                     style=self.radiostyle,
-                    command = self.create_assessment_function(
-                            column_name = variable,
-                            column_val = option)
-                    ).pack(
-                        side='top', fill=tk.X, anchor=tk.NW)
+                    command=self.create_assessment_function(
+                        column_name=variable,
+                        column_val=option
+                    )
+                ).pack(
+                    side='top', fill=tk.X, anchor=tk.NW
+                )
 
             variable_frame.pack(side="left", fill=tk.X, anchor=tk.NW)
 
-        # Create a little navigation button
-        self.assessment_navigation_frame = tk.Frame()
-        tk.Button(
-            master=self.assessment_navigation_frame,
-            text="Save assessment and view next file",
-            command = self.load_next_file).pack(side='left')
-
-        self.assessment_navigation_frame.pack(side='bottom')
-        self.assessment_button_frame.pack(side='bottom')
+        self.assessment_navigation_frame.pack()
+        self.assessment_button_frame.pack()
 
 
     def create_assessment_function(self, column_name, column_val):
         """Create a function for assigning an assessment value to a column
 
-        This is a helper function that generates functions.
-        It returns an instance of self.assign_assessment() that associates
-        the correct column name with the chosen column value.
-        These functions are generated to go along with buttons.
+        This is a helper function that generates functions for radio buttons.
+        It returns a function that associates the correct column name with
+        the chosen column value.
 
         Args:
-            column_name (str): the name of the variable
-            column_val (str): the value of the variable to be chosen by the user
+            column_name (str): name of the variable (column name in CSV)
+            column_val (str): value of variable, to be decided by the user
+                (column contents for one row in CSV)
+        """
+        def _assign_assessment(column_name, column_val):
+            #For an assessment, assign the assessment value to a column value.
+            #column_name (str): the name of the variable
+            #column_val (str): the value of the variable chosen by the user
+            print(f"Setting {column_name} as {column_val}")
+            self.assessment[column_name] = column_val
+
+        return lambda : _assign_assessment(column_name = column_name, column_val = column_val)
+
+    def start_assessment(self, assess_folder, labels_dict, assess_csv, behavior):
+        # Start assessment!
+        # Finish any prior assessments that were already active
+        if self.assess_csv:
+            self.finish_assessment()
+
+        # Set self.folder and populate self.files
+        self.set_assessment_folder(assess_folder=assess_folder)
+
+        # Set self.labels and create first blank assessment
+        self.set_assessment_labels(labels_dict=labels_dict)
+
+        # Set self.assessment_csv and create or continue from file as needed
+        self.set_assessment_csv(assess_csv=assess_csv, behavior=behavior)
+
+        # Remove popup
+        self.remove_assess_popup()
+
+        # Draw first spectrogram
+        self.load_samples()
+        self.draw_spec()
+
+        # Make buttons
+        #if not self.assessment_button_frame.winfo_children():
+        self.make_assessment_buttons()
+
+        # Play the first file
+        self.play()
+
+
+
+
+
+
+
+
+    ################ FOR COMPLETING ASSESSMENTS ##################
+
+    def complete_one_assessment(self):
+        """Do the functions necessary to write an assessment for one file
+
+        Write out the results of the assessment as a single line to self.assess_csv.
+        Clear the radio buttons that were selected.
+        Clear the dictionary of selections that corresponded to the selected buttons.
         """
 
-        #print(f"Creating button to set {column_name} as {column_val}")
-        return lambda : self.assign_assessment(column_name = column_name, column_val = column_val)
-
-
-    def assign_assessment(self, column_name, column_val):
-        """For an assessment, assign the assment value to a column value.
-
-        Args:
-            column_name (str): the name of the variable
-            column_val (str): the value of the variable chosen by the user
-        """
-        print(f"Setting {column_name} as {column_val}")
-        self.assessment[column_name] = column_val
-
-    def write_assessment(self):
-        '''
-        Write the file at self.position with its designated status
-        to the assessment file at self.assess_csv, then move
-        to next file
-        '''
-
+        # Write out the results of the assessment as a single line to the CSV
         row_to_write = [self.files[self.position], *self.assessment.values()]
         with open(self.assess_csv, 'a', newline='') as f:
             writer = csv.writer(f, delimiter=',')
             writer.writerow(row_to_write)
 
-        self.clear_assessment_buttons()
-        self.make_assessment_buttons()
+        # Unselect the selected radio buttons
+        kids = self.assessment_button_frame.winfo_children()
+        for item in kids :
+            if item.winfo_children() :
+                kids.extend(item.winfo_children())
+        for idx, kid in enumerate(kids):
+            if type(kid) == ttk.Radiobutton:
+                kid.state(["!focus", "!selected"])
 
+        # Reset the dictionary of selections for the current assessment
+        self.reset_assessment_dict()
+
+
+    def reset_assessment_dict(self):
+        """Reset self.assessment
+
+        Resets the dictionary for the current assessment.
+        Is also called to create the dictionary for a new set of labels.
+        """
+        for label in self.labels_dict.keys():
+            self.assessment[label] = None
 
     def finish_assessment(self):
-        '''
-        Delete contents of self.assessment_button_frame
+        """Do necessary tasks to fully close out an assessment
 
-        Called either when out of files, or when window is closed
-        '''
+        Deletes assessment buttons and "continue" button
+        Removes spectrograms
+        Resets the variables used during assessments
+        """
         print("Ending assessment")
-
-        # Destroy accept/reject/hold buttons
-        for child in self.assessment_button_frame.winfo_children():
-            child.destroy()
 
         # Clear spectrogram
         self.clear_fig()
 
-        # Reset relevant variables
+        # Destroy accept/reject/hold buttons
+        self.assessment_navigation_frame.destroy()
+        self.assessment_button_frame.destroy()
+
+        # Reset attributes used globally in an assessment
         self.assess_csv = None
+        self.assessment = OrderedDict()
 
 
 
@@ -846,24 +955,8 @@ class Application:
 
 
 
-    #################### AUDIO HELPER FUNCTIONS ####################
 
-    def play(self):
-        if type(self.samples) is not np.ndarray:
-            return
-        else:
-            if self.play_obj:
-                self.stop()
-            self.play_obj = sa.play_buffer(
-                audio_data = self.samples,
-                num_channels = 1,
-                bytes_per_sample = 2,
-                sample_rate = int(self.sample_rate))
 
-    def stop(self):
-        if self.play_obj:
-            self.play_obj.stop()
-            sa.stop_all()
 
 
 
