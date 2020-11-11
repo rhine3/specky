@@ -415,6 +415,7 @@ class Application:
         files.extend(dirname.glob("**/*.mp3"))
         files.extend(dirname.glob("**/*.wav"))
         files.extend(dirname.glob("**/*.WAV"))
+        files = sorted(files)
         if not dry:
             self.files = files
 
