@@ -439,7 +439,7 @@ class Application:
 
 
 
-    #################### KICK OFF TWO IMPORTANT FUNCTIONALITIES ####################
+    #################### METHODS FOR INITIALLY SETTING UP AN ASSESSMENT ####################
 
     def set_up_assessment(self):
         """Create a popup where user can create settings for assessment
@@ -547,6 +547,8 @@ class Application:
         submit_button.pack(side='left')
         finish_frame.pack(anchor='e')
 
+        self.validate_assessment(folder_entry, labels_entry, savefile_entry)
+
     def remove_assess_popup(self):
         """Close assessment popup and reset self.assess_popup attribute
         """
@@ -611,23 +613,6 @@ class Application:
         # Play the first file
         self.play()
 
-
-
-
-
-
-
-
-    #################### ASSESSMENT HELPER FUNCTIONS ####################
-
-    def reset_assessment_dict(self):
-        """Reset self.assessment_dic
-
-        Resets the dictionary for the current assessment.
-        Can also be called to create the dictionary for a new set of labels.
-        """
-        for label in self.labels_dict.keys():
-            self.assessment[label] = None
 
     ### FOLDER SETUP ###
     def validate_assessment_folder(self, assess_folder):
@@ -712,7 +697,6 @@ class Application:
                     return assess_csv, 'continue'
 
     def make_assessment_csv_header(self, labels_dict):
-
         header_row = ['filename']
         header_row.extend(list(labels_dict.keys()))
         return header_row
@@ -756,17 +740,6 @@ class Application:
                 writer = csv.writer(f, delimiter=',')
                 writer.writerow(header_row)
 
-    def clear_assessment_buttons(self):
-        """Remove assessment buttons
-
-        Delete any assessment buttons (labels and "save & continue" buttons)
-        that are currently packed on the app
-        - Used every time a file is done being assessed
-        - Also used whenever a new assessment is started
-        """
-        self.assessment_navigation_frame.destroy()
-        self.assessment_button_frame.destroy()
-
     def make_assessment_buttons(self):
         """Create rows of buttons, one for each assessment attribute
 
@@ -784,20 +757,23 @@ class Application:
         All attributes must be assessed before continuing.
         """
 
-
-        self.assessment_button_frame = tk.Frame()
-        self.assessment_button_frame.pack()
+        # Create a little navigation button
         self.assessment_navigation_frame = tk.Frame()
-        self.assessment_navigation_frame.pack()
+        tk.Button(
+            master=self.assessment_navigation_frame,
+            text="Save assessment and view next file",
+            command=self.load_next_file,
+        ).pack(side='left')
 
+        # Create a dictionary and radio buttons for assessment variables
         self.assessment_variables = OrderedDict()
-        # Create a set of radio buttons for each assessment variable
+        self.assessment_button_frame = tk.Frame()
         for variable, options in self.labels_dict.items():
 
             # Keep track of each variable in an ordered dict
             self.assessment_variables[variable] = tk.StringVar()
 
-            # Create radio button for each option
+            # Create radio button for each option in this variable
             variable_frame = tk.Frame(
                 master = self.assessment_button_frame,
             )
@@ -824,16 +800,8 @@ class Application:
 
             variable_frame.pack(side="left", fill=tk.X, anchor=tk.NW)
 
-        # Create a little navigation button
-        self.assessment_navigation_frame = tk.Frame()
-        tk.Button(
-            master=self.assessment_navigation_frame,
-            text="Save assessment and view next file",
-            command = self.load_next_file).pack(side='left')
-
-        self.assessment_navigation_frame.pack(side='bottom')
-        self.assessment_button_frame.pack(side='bottom')
-
+        self.assessment_navigation_frame.pack()
+        self.assessment_button_frame.pack()
 
     def create_assessment_function(self, column_name, column_val):
         """Create a function for assigning an assessment value to a column
@@ -850,33 +818,6 @@ class Application:
 
         #print(f"Creating button to set {column_name} as {column_val}")
         return lambda : self.assign_assessment(column_name = column_name, column_val = column_val)
-
-
-    def assign_assessment(self, column_name, column_val):
-        """For an assessment, assign the assment value to a column value.
-
-        Args:
-            column_name (str): the name of the variable
-            column_val (str): the value of the variable chosen by the user
-        """
-        print(f"Setting {column_name} as {column_val}")
-        self.assessment[column_name] = column_val
-
-    def write_assessment(self):
-        '''
-        Write the file at self.position with its designated status
-        to the assessment file at self.assess_csv, then move
-        to next file
-        '''
-
-        row_to_write = [self.files[self.position], *self.assessment.values()]
-        with open(self.assess_csv, 'a', newline='') as f:
-            writer = csv.writer(f, delimiter=',')
-            writer.writerow(row_to_write)
-
-        self.clear_assessment_buttons()
-        self.make_assessment_buttons()
-
 
     def finish_assessment(self):
         '''
@@ -895,6 +836,63 @@ class Application:
         # Reset relevant variables
         self.assess_csv = None
         self.assessment = OrderedDict()
+
+
+
+
+
+
+    ##################### METHODS FOR EACH INDIVIDUAL ASSESSMENT ##################
+
+    def reset_assessment_dict(self):
+        """Reset self.assessment
+
+        Resets the dictionary for the current assessment.
+        Can also be called to create the dictionary for a new set of labels.
+        """
+        for label in self.labels_dict.keys():
+            self.assessment[label] = None
+
+    def clear_assessment_buttons(self):
+        """Remove assessment buttons
+
+        Delete any assessment buttons (labels and "save & continue" buttons)
+        that are currently packed on the app
+        - Used every time a file is done being assessed
+        - Also used whenever a new assessment is started
+        """
+        self.assessment_navigation_frame.destroy()
+        self.assessment_button_frame.destroy()
+
+    def assign_assessment(self, column_name, column_val):
+        """For an assessment, assign the assment value to a column value.
+
+        This is called every time a radio button is clicked.
+
+        Args:
+            column_name (str): the name of the variable
+            column_val (str): the value of the variable chosen by the user
+        """
+        print(f"Setting {column_name} as {column_val}")
+        self.assessment[column_name] = column_val
+
+    def write_assessment(self):
+        """Write assessment for one file
+
+        Write a single line to a CSV:
+        The file at self.position, and for each variable, the choices
+        that the user chose for that file.
+        """
+
+        row_to_write = [self.files[self.position], *self.assessment.values()]
+        with open(self.assess_csv, 'a', newline='') as f:
+            writer = csv.writer(f, delimiter=',')
+            writer.writerow(row_to_write)
+
+        self.clear_assessment_buttons()
+        self.make_assessment_buttons()
+
+
 
 
 
