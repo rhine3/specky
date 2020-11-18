@@ -443,7 +443,7 @@ class Application:
     def try_replace_entry(self, text, entry_box, start_position):
         if entry_box and text:
             entry_box.delete(start_position, tk.END)
-            entry_box.insert(start_position, dir)
+            entry_box.insert(start_position, text)
 
     def get_directory(self, entry_box=None):
         dir = fd.askdirectory()
