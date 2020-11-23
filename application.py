@@ -591,8 +591,6 @@ class Application:
         submit_button.pack(side='left')
         finish_frame.pack(anchor='e')
 
-        self.validate_assessment(folder_entry, labels_entry, savefile_entry)
-
     def remove_assess_popup(self):
         """Close assessment popup and reset self.assess_popup attribute
         """
