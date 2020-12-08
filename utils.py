@@ -70,7 +70,7 @@ def load_file(filename, sample_rate=22050):
         warnings.filterwarnings("ignore", category=UserWarning) #ignore mp3 import warning
 
         samples, sample_rate = load(
-            filename,
+            str(filename),
             mono=False,  # Don't automatically load as mono, so we can warn if we force to mono
             sr=sample_rate, # Resample
             res_type='kaiser_best',
