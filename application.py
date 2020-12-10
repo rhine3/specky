@@ -545,6 +545,7 @@ class Application:
         a folder to assess, labels to use in the assessment, and a csv to
         save the assessment results to.
         """
+        # Bring popup to front if it is already created
         if self.assess_popup is not None:
             self.assess_popup.lift()
             return
