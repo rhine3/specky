@@ -276,7 +276,8 @@ class Application:
         if already_flipped:
             flip_axis = False
 
-        plotter(spect, freqs, times, self.ax, title=self.files[self.position])
+        title = str(self.files[self.position]) + f'\nFile #{self.position + 1} out of {len(self.files)}'
+        plotter(spect, freqs, times, self.ax, title=title)
 
         self.fig.canvas.draw()
 
