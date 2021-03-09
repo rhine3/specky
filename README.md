@@ -22,7 +22,7 @@ Install ffmpeg on your computer if you wish to annotate .mp3 files:
 Now you should be able to run Specky inside your environment:
 ```
 conda activate specky_env
-python application.py
+python specky.py
 # Use specky
 # Print statements will appear here in the Terminal as you are using Specky
 conda deactivate specky_env
@@ -70,7 +70,7 @@ You don't have to use the same number of labels for each variable.
 * Put your clips into one directory. `specky` finds all clips inside a directory and all of its subdirectories, so it is fine if your clips are separated into multiple subdirectories.
 * Create a "labels" file of the format described above, if desired. Otherwise, the default assessment criteria will be used
 * Download specky and create a virtual environment using the instructions above
-* Activate the virtual environment and run `python application.py`
+* Activate the virtual environment and run `python specky.py`
 * Click the "assess folder" button
 * Select or type which folder you want to review clips from
 * To select the labels to use, either:

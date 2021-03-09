@@ -1,5 +1,5 @@
 '''
-application.py
+specky.py
 by Tessa Rhinehart
 
 A Python3 GUI for inspecting spectrograms
