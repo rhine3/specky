@@ -686,9 +686,7 @@ class Application:
         else:
             continue_from_file = tk.messagebox.askyesnocancel(
                 "Warning",
-                'There is already a file at the chosen location. Attempt to continue \
-                assessment from this file?\n\n Selecting "no" will overwrite assessment. \
-                \n\nSelecting "cancel" will allow you to pick a new file'
+                'There is already a file at the chosen location. Attempt to continue assessment from this file?\n\nSelecting "no" will overwrite assessment.\n\nSelecting "cancel" will allow you to pick a new file'
             )
 
             # When user clicks "Cancel": Select a different assessment file
@@ -712,7 +710,9 @@ class Application:
 
                 # Can't continue previous assessment: select a new file
                 if chosen_labels != pre_existing_labels:
-                    return 0, f"Labels in the pre-existing annotation file ({assess_csv}) do not match the chosen labels.\n\nPre-existing labels: {pre_existing_labels}\nChosen labels: {chosen_labels}\n\nSelect a different annotation file or change the labels"
+                    response = f"Labels in the pre-existing annotation file ({assess_csv}) do not match the chosen labels.\n\nPre-existing labels: {pre_existing_labels}\nChosen labels: {chosen_labels}\n\nSelect a different annotation file or change the labels"
+                    print(response)
+                    return 0, response
 
                 # Can continue previous assessment: un-queue old assessed files
                 else:
@@ -755,6 +755,9 @@ class Application:
                     try:
                         self.files.remove(filename)
                     except: pass
+            # Write an additional new line for the continuance
+            with open(self.assess_csv, 'a') as f:
+                f.write('\n')
         else: #behavior == 'new' or behavior == 'overwrite'
             print(f"Creating {self.assess_csv} ({behavior})")
             header_row = self.make_assessment_csv_header(self.labels_dict)
