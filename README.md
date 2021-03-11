@@ -9,10 +9,26 @@ git clone https://github.com/rhine3/specky.git
 cd specky
 ```
 
-Install the Python environment needed by Specky using conda:
+**Windows users**:
+Install Windows Subsystem for Linux
+Install XMing:
+set up X11 forwarding: 
 ```
-conda env create --file conda_environment.yaml --name specky_env
+sudo apt install x11-apps -y
+echo "export DISPLAY=localhost:0.0" >> ~/.bashrc
+# Restart terminal
 ```
+Install the Python environment needed by Specky using conda and pip:
+```
+
+conda create --name specky_env python=3.6 matplotlib scipy
+conda activate specky_env
+conda install gcc_linux-64 # Needed to compile simpleaudio
+conda install -c conda-forge alsa-lib # Needed to compile simpleaudio
+pip install librosa simpleaudio
+```
+
+If you are using Windows Subsystem for Linux, make sure to 
 
 Install ffmpeg on your computer if you wish to annotate .mp3 files:
 * Instructions for Windows users: https://www.wikihow.com/Install-FFmpeg-on-Windows
@@ -21,7 +37,6 @@ Install ffmpeg on your computer if you wish to annotate .mp3 files:
 
 Now you should be able to run Specky inside your environment:
 ```
-conda activate specky_env
 python specky.py
 # Use specky
 # Print statements will appear here in the Terminal as you are using Specky
