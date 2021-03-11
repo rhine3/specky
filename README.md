@@ -11,14 +11,19 @@ cd specky
 
 **Windows users**:
 Install Windows Subsystem for Linux
-Install XMing:
-set up X11 forwarding: 
-```
-sudo apt install x11-apps -y
-echo "export DISPLAY=localhost:0.0" >> ~/.bashrc
-# Restart terminal
-```
+Install XMing: https://sourceforge.net/projects/xming/
+set up X11 forwarding then restart terminal: `echo "export DISPLAY=localhost:0.0" >> ~/.bashrc`
+Install libasound2: `sudo apt-get install libasound2-dev`
 Install the Python environment needed by Specky using conda and pip:
+```
+conda create -n specky_env 
+conda activate specky_env
+conda install matplotlib scipy gcc_linux-64
+conda install -c conda-forge alsa-lib
+pip install librosa simpleaudio
+```
+
+
 ```
 
 conda create --name specky_env python=3.6 matplotlib scipy
