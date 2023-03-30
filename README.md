@@ -9,9 +9,10 @@ git clone https://github.com/rhine3/specky.git
 cd specky
 ```
 
-Install the Python environment needed by Specky using conda:
+Install the Python environment needed by Specky using conda, replacing `[conda_environment_name.yaml]` with the appropriate name, `wsl_environment.yaml` for Windows and `mac_environment.yaml` for Linux.
+
 ```
-conda env create --file conda_environment.yaml --name specky_env
+conda create --file [conda_environment_name.yaml] --name specky_env
 ```
 
 Install ffmpeg on your computer if you wish to annotate .mp3 files:
